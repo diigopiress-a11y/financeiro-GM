@@ -126,8 +126,8 @@ function App() {
       <div className="page">
         {tab === "inicio" && <Dashboard employees={activeEmployees} summary={summary} weekTotal={weekTotal} pendingCount={pendingCount} setTab={setTab} selectedDate={selectedDate} setSelectedDate={setSelectedDate} weeklyRows={weeklyRows}/>}
         {tab === "diarias" && <DailyPage employees={activeEmployees} selectedDate={selectedDate} setSelectedDate={setSelectedDate} getStatus={getStatus} setStatus={setStatus} notify={notify}/>}
-        {tab === "extras" && <OvertimePage overtime={overtime} employees={activeEmployees} onAdd={() => setShowOvertime(true)} onDelete={id => setOvertime(old => old.filter(o => o.id !== id))}/>}
-        {tab === "equipe" && <TeamPage employees={employees} query={query} setQuery={setQuery} onAdd={() => {setEditingEmployee(null);setShowEmployee(true);}} onEdit={e => {setEditingEmployee(e);setShowEmployee(true);}} onToggle={id => setEmployees(old => old.map(e => e.id === id ? {...e,active:!e.active}:e))}/>}
+        {tab === "extras" && <OvertimePage overtime={overtime} employees={activeEmployees} onAdd={() => setShowOvertime(true)} onDelete={(id: string) => setOvertime(old => old.filter(o => o.id !== id))}/>}
+        {tab === "equipe" && <TeamPage employees={employees} query={query} setQuery={setQuery} onAdd={() => {setEditingEmployee(null);setShowEmployee(true);}} onEdit={(e: Employee) => {setEditingEmployee(e);setShowEmployee(true);}} onToggle={(id: string) => setEmployees(old => old.map(e => e.id === id ? {...e,active:!e.active}:e))}/>}
         {tab === "fechamento" && <ClosingPage rows={weeklyRows} weekStart={weekStart} setWeekStart={setWeekStart} weekEnd={weekEnd} total={weekTotal} paidTotal={paidTotal} pendingCount={pendingCount} onTogglePaid={togglePaid} onExport={exportCSV}/>}
       </div>
     </main>
