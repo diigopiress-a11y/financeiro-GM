@@ -101,17 +101,11 @@ function App() {
     setShowEmployee(false); setEditingEmployee(null); notify(id ? "Funcionário atualizado" : "Funcionário cadastrado");
   };
   const addDailyRecord = (person: Omit<Employee, "id" | "active">, date: string, hours: number, note: string) => {
-    let id = "";
-    setEmployees(old => {
-      const normalized = person.name.trim().toLocaleLowerCase("pt-BR");
-      const existing = old.find(e => e.name.trim().toLocaleLowerCase("pt-BR") === normalized);
-      if (existing) {
-        id = existing.id;
-        return old.map(e => e.id === id ? { ...e, ...person, active: true } : e);
-      }
-      id = uid();
-      return [...old, { ...person, id, active: true }];
-    });
+    const normalized = person.name.trim().toLocaleLowerCase("pt-BR");
+    const existing = employees.find(e => e.name.trim().toLocaleLowerCase("pt-BR") === normalized);
+    const id = existing?.id ?? uid();
+    if (existing) setEmployees(old => old.map(e => e.id === id ? { ...e, ...person, active: true } : e));
+    else setEmployees(old => [...old, { ...person, id, active: true }]);
     setAttendance(old => [...old.filter(a => !(a.employeeId === id && a.date === date)), { employeeId: id, date, status: "worked" }]);
     setOvertime(old => [...old.filter(o => !(o.employeeId === id && o.date === date)), ...(hours > 0 ? [{ id: uid(), employeeId: id, date, hours, note }] : [])]);
     notify("Diária e hora extra registradas");
