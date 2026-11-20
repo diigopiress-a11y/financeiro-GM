@@ -23,20 +23,13 @@ const fmtDate = (date: string) => new Date(date + "T12:00:00").toLocaleDateStrin
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const uid = () => Math.random().toString(36).slice(2, 10);
 const days = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-const seedEmployees: Employee[] = [
-  { id: "e1", name: "Carlos Henrique", role: "Operador", dailyRate: 150, hourlyRate: 20, active: true },
-  { id: "e2", name: "Marcos Oliveira", role: "Auxiliar", dailyRate: 130, hourlyRate: 18, active: true },
-  { id: "e3", name: "João Pedro", role: "Motorista", dailyRate: 170, hourlyRate: 22, active: true },
-  { id: "e4", name: "Ana Paula", role: "Ajudante", dailyRate: 130, hourlyRate: 18, active: true },
-  { id: "e5", name: "Pedro Santos", role: "Operador", dailyRate: 150, hourlyRate: 20, active: true },
-  { id: "e6", name: "Rafael Lima", role: "Auxiliar", dailyRate: 130, hourlyRate: 18, active: true },
-];
+const seedEmployees: Employee[] = [];
 
 function readStore<T>(key: string, fallback: T): T {
   try { const raw = localStorage.getItem("diaria-gm-" + key); return raw ? JSON.parse(raw) as T : fallback; } catch { return fallback; }
 }
 function App() {
-  const [employees, setEmployees] = useState<Employee[]>(() => readStore("employees", seedEmployees));
+  const [employees, setEmployees] = useState<Employee[]>(() => readStore("employees", []));
   const [attendance, setAttendance] = useState<Attendance[]>(() => readStore("attendance", []));
   const [overtime, setOvertime] = useState<Overtime[]>(() => readStore("overtime", []));
   const [payments, setPayments] = useState<Payment[]>(() => readStore("payments", []));
@@ -52,6 +45,15 @@ function App() {
   useEffect(() => { localStorage.setItem("diaria-gm-attendance", JSON.stringify(attendance)); }, [attendance]);
   useEffect(() => { localStorage.setItem("diaria-gm-overtime", JSON.stringify(overtime)); }, [overtime]);
   useEffect(() => { localStorage.setItem("diaria-gm-payments", JSON.stringify(payments)); }, [payments]);
+  useEffect(() => {
+    const demoNames = new Set(["Carlos Henrique","Marcos Oliveira","João Pedro","Ana Paula","Pedro Santos","Rafael Lima"]);
+    setEmployees(old => old.filter(e => {
+      const isDemo = demoNames.has(e.name);
+      if (!isDemo) return true;
+      const hasHistory = attendance.some(a => a.employeeId === e.id) || overtime.some(o => o.employeeId === e.id) || payments.some(p => p.employeeId === e.id);
+      return hasHistory;
+    }));
+  }, []);
 
   const activeEmployees = employees.filter(e => e.active);
   const weekDays = Array.from({ length: 7 }, (_, i) => shiftDate(weekStart, i));
@@ -98,9 +100,18 @@ function App() {
     else setEmployees(old => [...old, { ...data, id: uid(), active: true }]);
     setShowEmployee(false); setEditingEmployee(null); notify(id ? "Funcionário atualizado" : "Funcionário cadastrado");
   };
-  const addDailyRecord = (employeeId: string, date: string, hours: number, note: string, person?: Omit<Employee, "id" | "active">) => {
-    let id = employeeId;
-    if (person) { id = uid(); setEmployees(old => [...old, { ...person, id, active: true }]); }
+  const addDailyRecord = (person: Omit<Employee, "id" | "active">, date: string, hours: number, note: string) => {
+    let id = "";
+    setEmployees(old => {
+      const normalized = person.name.trim().toLocaleLowerCase("pt-BR");
+      const existing = old.find(e => e.name.trim().toLocaleLowerCase("pt-BR") === normalized);
+      if (existing) {
+        id = existing.id;
+        return old.map(e => e.id === id ? { ...e, ...person, active: true } : e);
+      }
+      id = uid();
+      return [...old, { ...person, id, active: true }];
+    });
     setAttendance(old => [...old.filter(a => !(a.employeeId === id && a.date === date)), { employeeId: id, date, status: "worked" }]);
     setOvertime(old => [...old.filter(o => !(o.employeeId === id && o.date === date)), ...(hours > 0 ? [{ id: uid(), employeeId: id, date, hours, note }] : [])]);
     notify("Diária e hora extra registradas");
@@ -169,43 +180,40 @@ function Dashboard({ employees, summary, weekTotal, pendingCount, setTab, select
 }
 
 function DailyPage({ employees, attendance, overtime, selectedDate, setSelectedDate, onAdd, onUpdateHours, onDelete }: any) {
-  const [personId,setPersonId] = useState("");
-  const [newPerson,setNewPerson] = useState(false);
   const [name,setName] = useState("");
   const [role,setRole] = useState("");
-  const [daily,setDaily] = useState("150");
   const [hourly,setHourly] = useState("20");
   const [hours,setHours] = useState("0");
   const [note,setNote] = useState("");
+  const isCargueiro = role.trim().toLocaleLowerCase("pt-BR").includes("cargueiro");
+  const dailyRate = isCargueiro ? 150 : 120;
   const dayRows = attendance.filter((a: Attendance)=>a.date===selectedDate && a.status==="worked");
   const dayHours = overtime.filter((o: Overtime)=>o.date===selectedDate).reduce((s:number,o:Overtime)=>s+o.hours,0);
   const getPerson = (id:string) => employees.find((e:Employee)=>e.id===id);
   const submit = (e:React.FormEvent) => {
     e.preventDefault();
-    const person = newPerson ? { name:name.trim(), role:role.trim()||"Diária", dailyRate:Number(daily), hourlyRate:Number(hourly) } : undefined;
-    if ((newPerson && !name.trim()) || (!newPerson && !personId)) return;
-    onAdd(personId,selectedDate,Number(hours),note.trim(),person);
-    setName(""); setHours("0"); setNote(""); setNewPerson(false); setPersonId("");
+    if (!name.trim()) return;
+    onAdd({ name:name.trim(), role:role.trim()||"Diária", dailyRate, hourlyRate:Number(hourly) },selectedDate,Number(hours),note.trim());
+    setName(""); setRole(""); setHourly("20"); setHours("0"); setNote("");
   };
   return <>
-    <PageHeading eyebrow="LANÇAMENTO DO DIA" title="Diárias do dia" description="A equipe pode mudar todos os dias. Adicione somente quem trabalhou e registre a diária e as horas extras juntas."/>
+    <PageHeading eyebrow="LANÇAMENTO DO DIA" title="Diárias do dia" description="Digite manualmente o nome de cada pessoa que trabalhou. A diária é R$ 120, ou R$ 150 para cargueiros, e as horas extras entram no mesmo lançamento."/>
     <div className="toolbar-card"><div className="date-picker-wrap"><CalendarDays size={18}/><label>Dia do serviço<input type="date" value={selectedDate} onChange={e=>setSelectedDate(e.target.value)}/></label></div><div className="toolbar-counts"><span className="count-green">{dayRows.length} pessoas lançadas</span><span>{dayHours.toLocaleString("pt-BR")}h extras</span></div></div>
     <section className="panel" style={{padding:20,marginBottom:22}}>
-      <div className="panel-head"><div><h2>Adicionar pessoa ao dia</h2><p>Escolha alguém já cadastrado ou informe um nome novo.</p></div></div>
+      <div className="panel-head"><div><h2>Adicionar pessoa ao dia</h2><p>Informe o nome manualmente. Não é necessário cadastrar a pessoa antes.</p></div></div>
       <form className="modal-form" onSubmit={submit}>
-        <label><span>Quem trabalhou?</span><select value={newPerson?"__new":personId} onChange={e=>{if(e.target.value==="__new"){setNewPerson(true);setPersonId("");}else{setNewPerson(false);setPersonId(e.target.value);const p=employees.find((x:Employee)=>x.id===e.target.value);if(p){setDaily(String(p.dailyRate));setHourly(String(p.hourlyRate));}}}}><option value="">Selecione uma pessoa</option>{employees.map((p:Employee)=><option key={p.id} value={p.id}>{p.name}</option>)}<option value="__new">+ Adicionar nome novo (avulso)</option></select></label>
-        {newPerson && <><label>Nome da pessoa<input required value={name} onChange={e=>setName(e.target.value)} placeholder="Digite o nome de quem trabalhou"/></label><label>Função (opcional)<input value={role} onChange={e=>setRole(e.target.value)} placeholder="Ex.: Ajudante, motorista..."/></label></>}
-        <div className="form-grid"><label>Valor da diária (R$)<input type="number" min="0" step="0.01" required value={daily} onChange={e=>setDaily(e.target.value)}/></label><label>Valor da hora extra (R$)<input type="number" min="0" step="0.01" required value={hourly} onChange={e=>setHourly(e.target.value)}/></label></div>
+        <label><span>Nome de quem trabalhou</span><input required value={name} onChange={e=>setName(e.target.value)} placeholder="Digite o nome completo"/></label>
+        <label><span>Função / cargo</span><select value={role} onChange={e=>setRole(e.target.value)}><option value="">Outras funções (diária R$ 120)</option><option value="Ajudante">Ajudante</option><option value="Auxiliar">Auxiliar</option><option value="Motorista">Motorista</option><option value="Operador">Operador</option><option value="Cargueiro">Cargueiro (diária R$ 150)</option></select></label>
+        <div className="form-grid"><label>Valor da diária<input type="text" readOnly value={money(dailyRate)}/></label><label>Valor da hora extra (R$)<input type="number" min="0" step="0.01" required value={hourly} onChange={e=>setHourly(e.target.value)}/></label></div>
         <div className="form-grid"><label>Horas extras no dia<input type="number" min="0" step="0.25" value={hours} onChange={e=>setHours(e.target.value)}/></label><label>Observação (opcional)<input value={note} onChange={e=>setNote(e.target.value)} placeholder="Ex.: passou 2h do horário"/></label></div>
         <div className="modal-actions"><button className="btn-primary" type="submit"><Plus size={16}/> Adicionar diária + extras</button></div>
       </form>
     </section>
     <div className="section-title-row"><div><h2>Pessoas lançadas neste dia</h2><p>Confira os valores e ajuste as horas extras se necessário.</p></div><span className="muted-count">{dayRows.length} lançamentos</span></div>
-    {dayRows.length===0?<div className="empty-state"><div className="empty-icon"><Users size={25}/></div><b>Ninguém lançado neste dia ainda</b><p>Adicione acima apenas as pessoas que compareceram.</p></div>:<div className="attendance-list">{dayRows.map((a:Attendance)=>{const p=getPerson(a.employeeId);const extra=overtime.find((o:Overtime)=>o.employeeId===a.employeeId&&o.date===selectedDate);const rate=p?.dailyRate??0;const hr=p?.hourlyRate??0;const h=extra?.hours??0;return <div className="attendance-card" key={a.employeeId}><div className="person-info"><div className="person-avatar">{(p?.name??"??").split(" ").map((n:string)=>n[0]).slice(0,2).join("").toUpperCase()}</div><div><b>{p?.name??"Nome não encontrado"}</b><small>{money(rate)} diária · {h.toLocaleString("pt-BR")}h × {money(hr)}/h</small><small className="table-note">Total do dia: <b>{money(rate+h*hr)}</b></small></div></div><div className="status-actions"><label style={{display:"grid",gap:4,fontSize:12}}>Horas extras<input aria-label="Horas extras" style={{width:82}} type="number" min="0" step="0.25" value={h} onChange={e=>onUpdateHours(a.employeeId,selectedDate,Number(e.target.value))}/></label><button className="icon-button danger-hover" aria-label="Remover pessoa do dia" onClick={()=>onDelete(a.employeeId,selectedDate)}><X size={17}/></button></div></div>})}</div>}
-    <div className="tip-box"><AlertCircle size={17}/><span>O fechamento semanal soma somente as diárias lançadas e as horas extras de cada pessoa. Os nomes e valores ficam associados ao dia registrado.</span></div>
+    {dayRows.length===0?<div className="empty-state"><div className="empty-icon"><Users size={25}/></div><b>Ninguém lançado neste dia ainda</b><p>Digite acima os nomes de quem compareceu.</p></div>:<div className="attendance-list">{dayRows.map((a:Attendance)=>{const p=getPerson(a.employeeId);const extra=overtime.find((o:Overtime)=>o.employeeId===a.employeeId&&o.date===selectedDate);const rate=p?.dailyRate??0;const hr=p?.hourlyRate??0;const h=extra?.hours??0;return <div className="attendance-card" key={a.employeeId}><div className="person-info"><div className="person-avatar">{(p?.name??"??").split(" ").map((n:string)=>n[0]).slice(0,2).join("").toUpperCase()}</div><div><b>{p?.name??"Nome não encontrado"}</b><small>{money(rate)} diária · {h.toLocaleString("pt-BR")}h × {money(hr)}/h</small><small className="table-note">Total do dia: <b>{money(rate+h*hr)}</b></small></div></div><div className="status-actions"><label style={{display:"grid",gap:4,fontSize:12}}>Horas extras<input aria-label="Horas extras" style={{width:82}} type="number" min="0" step="0.25" value={h} onChange={e=>onUpdateHours(a.employeeId,selectedDate,Number(e.target.value))}/></label><button className="icon-button danger-hover" aria-label="Remover pessoa do dia" onClick={()=>onDelete(a.employeeId,selectedDate)}><X size={17}/></button></div></div>})}</div>}
+    <div className="tip-box"><AlertCircle size={17}/><span>O fechamento semanal soma as diárias lançadas e as horas extras. Os nomes são digitados livremente a cada dia; se repetir o mesmo nome, o sistema associa à mesma pessoa.</span></div>
   </>;
 }
-
 function OvertimePage({ overtime, employees, onAdd, onDelete }: any) {
   const [filterDate,setFilterDate] = useState(todayISO());
   const list = overtime.filter((o: Overtime)=>o.date===filterDate).sort((a: Overtime,b: Overtime)=>b.date.localeCompare(a.date));
