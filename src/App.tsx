@@ -115,14 +115,14 @@ function App() {
 
   return <div className="app-shell">
     <aside className="sidebar">
-      <div className="brand"><div className="brand-mark">GM</div><div><strong>diária<span>gm</span></strong><small>GESTÃO DE EQUIPE</small></div></div>
-      <div className="company-switch"><div className="company-avatar">G</div><div><b>Grupo Modelo</b><small>Ambiente de demonstração</small></div><ChevronDown size={16}/></div>
+      <div className="brand"><div className="brand-mark">GM</div><div><strong>GM</strong><small>GESTÃO DE EQUIPE</small></div></div>
+      <div className="company-switch"><div className="company-avatar">G</div><div><b>GM</b><small>Gestão de equipe</small></div><ChevronDown size={16}/></div>
       <nav className="side-nav">{nav.map(item => <button key={item.id} className={tab === item.id ? "nav-item active" : "nav-item"} onClick={() => setTab(item.id)}><item.icon size={19}/>{item.label}</button>)}</nav>
       <div className="sidebar-bottom"><div className="help-card"><div className="help-icon"><Activity size={18}/></div><b>Controle simples, dia a dia.</b><p>Registre a equipe e feche a semana sem complicação.</p></div><div className="profile"><div className="profile-avatar">GM</div><div><b>Administrador</b><small>Gestor da empresa</small></div><MoreHorizontal size={18}/></div></div>
     </aside>
 
     <main className="main-content">
-      <header className="topbar"><div className="mobile-brand"><div className="brand-mark">GM</div><strong>diária<span>gm</span></strong></div><div className="breadcrumb">Gestão da equipe <span>/</span> <b>{title}</b></div><div className="top-actions"><span className="today-label"><CalendarDays size={15}/>{new Date().toLocaleDateString("pt-BR",{weekday:"short",day:"2-digit",month:"short"})}</span><div className="top-avatar">GM</div></div></header>
+      <header className="topbar"><div className="mobile-brand"><div className="brand-mark">GM</div><strong>GM</strong></div><div className="breadcrumb">Gestão da equipe <span>/</span> <b>{title}</b></div><div className="top-actions"><span className="today-label"><CalendarDays size={15}/>{new Date().toLocaleDateString("pt-BR",{weekday:"short",day:"2-digit",month:"short"})}</span><div className="top-avatar">GM</div></div></header>
       <div className="page">
         {tab === "inicio" && <Dashboard employees={activeEmployees} summary={summary} weekTotal={weekTotal} pendingCount={pendingCount} setTab={setTab} selectedDate={selectedDate} setSelectedDate={setSelectedDate} weeklyRows={weeklyRows}/>}
         {tab === "diarias" && <DailyPage employees={activeEmployees} selectedDate={selectedDate} setSelectedDate={setSelectedDate} getStatus={getStatus} setStatus={setStatus} notify={notify}/>}
