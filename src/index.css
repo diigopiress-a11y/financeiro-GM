@@ -4,3 +4,56 @@
 @media(max-width:1100px){.page{padding-left:27px;padding-right:27px}.topbar{padding:0 27px}.team-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.stats-grid{gap:10px}.stat-card{padding:14px}}
 @media(max-width:760px){body{background:#f5f7f5}.sidebar{display:none}.main-content{margin-left:0;padding-bottom:78px}.topbar{height:58px;padding:0 17px;background:#fff}.mobile-brand{display:flex;align-items:center;gap:8px}.mobile-brand .brand-mark{height:31px;width:31px;border-radius:9px;font-size:10px}.mobile-brand strong{font-size:18px}.breadcrumb{display:none}.top-actions{gap:8px}.today-label{font-size:10px}.today-label svg{display:none}.top-avatar{height:30px;width:30px}.page{padding:25px 16px 28px}.page-heading{align-items:flex-start;flex-direction:column;gap:14px;margin-bottom:19px}.page-heading h1{font-size:25px}.page-heading p{font-size:12px;line-height:1.5;max-width:440px}.heading-action{width:100%}.heading-action .btn-primary,.heading-action .btn-outline{width:100%}.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.stat-card{padding:13px;border-radius:11px}.stat-icon{height:30px;width:30px;margin-bottom:10px}.stat-value{font-size:23px}.stat-detail{font-size:9px}.dashboard-grid{grid-template-columns:1fr;gap:10px}.panel{padding:15px}.weekly-highlight strong{font-size:24px}.mini-metrics{gap:5px}.mini-metrics span{font-size:9px}.quick-panel{padding-bottom:7px}.attention-panel{padding:14px}.attention-row{align-items:flex-start;flex-wrap:wrap}.attention-row>div:nth-child(2){min-width:calc(100% - 55px)}.attention-row .status-pill{margin-left:46px}.date-strip{flex-wrap:wrap;font-size:11px}.date-long{display:none}.toolbar-card{padding:12px;align-items:flex-start;flex-direction:column;gap:10px;margin-bottom:18px}.toolbar-counts{width:100%;justify-content:space-between;gap:5px;font-size:9px}.section-title-row{margin-bottom:11px}.attendance-card{padding:11px 10px;align-items:flex-start;flex-direction:column;gap:10px}.person-info{width:100%}.status-actions{width:100%;display:grid;grid-template-columns:repeat(3,1fr)}.status-choice{justify-content:center;padding:9px 5px}.tip-box{font-size:9px}.two-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.team-grid{grid-template-columns:1fr}.search-toolbar{flex-direction:row;align-items:center}.team-card{padding:14px}.week-selector{width:100%;justify-content:space-between;gap:5px;padding:8px}.week-selector>div{min-width:0;flex:1}.today-button{padding:8px 7px}.closing-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.closing-stats .stat-card:last-child{grid-column:span 2}.closing-card{padding:12px}.closing-main{gap:8px;flex-wrap:wrap}.closing-name{flex:1 1 calc(55% - 50px)}.closing-total{flex:1 1 100%;text-align:left;padding-left:47px;display:flex;align-items:center;gap:8px}.closing-total b{font-size:13px}.closing-bottom{margin-top:9px}.closing-total-bar{padding:14px 15px}.closing-total-bar b{font-size:17px}.table-panel{overflow-x:auto}.table-head,.table-row{min-width:510px}.mobile-nav{position:fixed;z-index:20;bottom:0;left:0;right:0;height:68px;padding:7px 5px calc(7px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid #e5ebe5;display:grid;grid-template-columns:repeat(5,1fr);box-shadow:0 -5px 20px #17271b08}.mobile-nav-item{border:0;background:transparent;color:#9aa49d;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:9px;font-weight:600}.mobile-nav-item.active{color:#4e7c37}.mobile-nav-item.active svg{stroke-width:2.5}.modal-backdrop{align-items:end;padding:0}.modal{width:100%;border-radius:18px 18px 0 0;padding:20px 17px calc(20px + env(safe-area-inset-bottom));max-height:90vh;overflow:auto}.toast{bottom:83px;max-width:calc(100% - 30px);font-size:10px}}
 @media(max-width:370px){.today-label{display:none}.page{padding-left:12px;padding-right:12px}.status-choice{font-size:9px;gap:3px}.closing-name b{font-size:10px}}
+
+
+/* Identidade visual GM — preto, branco e tons neutros */
+:root{color:#171717;background:#f4f4f4}
+body{background:#f4f4f4;color:#171717}
+.sidebar{background:#090909;color:#fff}
+.brand-mark{background:#fff;color:#090909;border-radius:9px;font-size:14px;letter-spacing:-1px}
+.brand strong,.mobile-brand strong{color:#fff;letter-spacing:-1.2px}
+.brand small{color:#a3a3a3}
+.company-switch,.help-card{background:#171717;border-color:#303030}
+.company-avatar,.profile-avatar,.top-avatar{background:#fff;color:#111}
+.company-switch small,.profile small,.help-card p{color:#a3a3a3}
+.company-switch>svg,.profile>svg{color:#a3a3a3}
+.nav-item{color:#b5b5b5}
+.nav-item:hover{background:#242424;color:#fff}
+.nav-item.active{background:#fff;color:#090909}
+.help-icon{background:#303030;color:#fff}
+.profile{border-color:#303030}
+.topbar{border-color:#e5e5e5}
+.page-heading h1,.panel-head h2,.section-title-row h2,.person-info b,.breadcrumb b{color:#171717}
+.eyebrow,.text-link{color:#555}
+.btn-primary,.btn-mark-paid{background:#111;color:#fff;border-color:#111;box-shadow:none}
+.btn-primary:hover,.btn-mark-paid:hover{background:#333}
+.btn-outline{border-color:#d4d4d4;color:#222}
+.btn-outline:hover{background:#f0f0f0}
+.stat-icon.green,.quick-icon.green,.stat-icon.blue,.quick-icon.blue,.stat-icon.amber,.quick-icon.amber{background:#ededed;color:#222}
+.stat-icon.red{background:#ededed;color:#555}
+.weekly-highlight{background:#f1f1f1;border-color:#e2e2e2}
+.weekly-highlight span,.weekly-highlight strong{color:#222}
+.highlight-icon{background:#e2e2e2;color:#111}
+.status-pill.warning,.status-pill.success{background:#ededed;color:#333}
+.attention-symbol,.empty-icon{background:#ededed;color:#333}
+.person-avatar{background:#ededed;color:#222}
+.status-choice.selected.worked,.status-choice.selected.absent,.status-choice.selected.off{background:#ededed;border-color:#bdbdbd;color:#171717}
+.count-green,.count-red{color:#333}
+.hours-value{color:#222}
+.today-button{background:#ededed;color:#222}
+.btn-paid{background:#ededed;border-color:#d5d5d5;color:#222}
+.closing-total-bar{background:#111;color:#fff}
+.closing-total-bar b{color:#fff}
+.tip-box{background:#f0f0f0;border-color:#dedede;color:#555}
+.modal-form input:focus,.modal-form select:focus{border-color:#777;box-shadow:0 0 0 3px #00000012}
+.toast{background:#111;color:#fff}
+.toast svg{color:#fff}
+.mobile-nav-item.active{color:#111}
+.mobile-nav-item.active svg{stroke-width:2.5}
+.mobile-nav{border-color:#e2e2e2}
+@media(max-width:760px){
+ body{background:#f4f4f4}
+ .mobile-brand strong{color:#111}
+ .mobile-brand .brand-mark{background:#111;color:#fff}
+ .mobile-nav{background:#fff}
+}
