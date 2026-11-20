@@ -23,7 +23,6 @@ const fmtDate = (date: string) => new Date(date + "T12:00:00").toLocaleDateStrin
 const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const uid = () => Math.random().toString(36).slice(2, 10);
 const days = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-const seedEmployees: Employee[] = [];
 
 function readStore<T>(key: string, fallback: T): T {
   try { const raw = localStorage.getItem("diaria-gm-" + key); return raw ? JSON.parse(raw) as T : fallback; } catch { return fallback; }
