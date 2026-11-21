@@ -65,7 +65,7 @@ function App() {
     const todayRecords = attendance.filter(a => a.date === selectedDate);
     const worked = todayRecords.filter(a => a.status === "worked").length;
     const absent = todayRecords.filter(a => a.status === "absent").length;
-    const extraPeople = overtime.filter(o => o.date === selectedDate).length;
+    const extraPeople = new Set(overtime.filter(o => o.date === selectedDate).map(o => o.employeeId)).size;
     const dayValue = todayRecords.filter(a => a.status === "worked").reduce((sum, a) => { const person = employees.find(e => e.id === a.employeeId); return sum + (a.dailyRate ?? person?.dailyRate ?? 0); }, 0);
     return { worked, absent, unmarked: 0, extraPeople, dayValue };
   }, [attendance, overtime, selectedDate, employees]);
@@ -74,7 +74,7 @@ function App() {
     const workedRecords = attendance.filter(a => a.employeeId === employee.id && a.status === "worked" && a.date >= weekStart && a.date <= weekEnd);
     const workedDays = workedRecords.length;
     const absences = attendance.filter(a => a.employeeId === employee.id && a.status === "absent" && a.date >= weekStart && a.date <= weekEnd).length;
-    const extraDays = overtime.filter(o => o.employeeId === employee.id && o.date >= weekStart && o.date <= weekEnd).length;
+    const extraDays = new Set(overtime.filter(o => o.employeeId === employee.id && o.date >= weekStart && o.date <= weekEnd).map(o => o.date)).size;
     const total = workedRecords.reduce((sum, a) => sum + (a.dailyRate ?? employee.dailyRate), 0);
     const paid = payments.some(p => p.employeeId === employee.id && p.weekStart === weekStart && p.paid);
     return { employee, workedDays, absences, extraDays, total, paid };
@@ -152,7 +152,7 @@ function Dashboard({ employees, summary, weekTotal, pendingCount, setTab, select
       <StatCard label="Trabalharam hoje" value={summary.worked} detail={"de " + employees.length + " funcionários ativos"} icon={UserRound} tone="green"/>
       <StatCard label="Faltas registradas" value={summary.absent} detail="Ausências neste dia" icon={AlertCircle} tone="red"/>
       <StatCard label="Com hora extra" value={summary.extraPeople} detail="Passaram do horário de saída" icon={Clock3} tone="blue"/>
-      <StatCard label="Valor lançado hoje" value={money(summary.dayValue)} detail="Diárias + horas extras" icon={Wallet} tone="amber"/>
+      <StatCard label="Valor lançado hoje" value={money(summary.dayValue)} detail="Soma das diárias" icon={Wallet} tone="amber"/>
     </div>
     <div className="dashboard-grid">
       <section className="panel daily-focus"><div className="panel-head"><div><h2>Resumo da semana</h2><p>Prévia do fechamento semanal</p></div><button className="text-link" onClick={() => setTab("fechamento")}>Ver fechamento <ArrowRight size={15}/></button></div>
@@ -195,33 +195,20 @@ function DailyPage({ employees, attendance, overtime, selectedDate, setSelectedD
   </>;
 }
 
-function OvertimePage({ overtime, employees, onAdd, onDelete }: any) {
-  const [filterDate,setFilterDate] = useState(todayISO());
-  const list = overtime.filter((o: Overtime)=>o.date===filterDate).sort((a: Overtime,b: Overtime)=>b.date.localeCompare(a.date));
-  const total = list.reduce((s: number,o: Overtime)=>s+o.hours,0);
-  const name = (id:string)=>employees.find((e:Employee)=>e.id===id)?.name ?? "Funcionário inativo";
-  return <>
-    <PageHeading eyebrow="HORAS EXTRAS" title="Horas extras" description="Registre as horas feitas por cada pessoa em cada dia." action={<button className="btn-primary" onClick={onAdd}><Plus size={17}/> Lançar horas</button>}/>
-    <div className="stats-grid two-stats"><StatCard label="Horas no dia" value={total.toLocaleString("pt-BR")+"h"} detail="Total lançado na data" icon={Clock3} tone="blue"/><StatCard label="Lançamentos" value={list.length} detail="Registros neste dia" icon={ClipboardList} tone="green"/></div>
-    <div className="toolbar-card"><div className="date-picker-wrap"><CalendarDays size={18}/><label>Filtrar por dia<input type="date" value={filterDate} onChange={e=>setFilterDate(e.target.value)}/></label></div></div>
-    <div className="section-title-row"><div><h2>Lançamentos do dia</h2><p>As horas serão somadas no fechamento semanal.</p></div></div>
-    {list.length===0?<div className="empty-state"><div className="empty-icon"><Clock3 size={25}/></div><b>Nenhuma hora extra neste dia</b><p>Quando houver horas extras, registre por aqui.</p><button className="btn-outline" onClick={onAdd}><Plus size={16}/> Adicionar lançamento</button></div>:<div className="panel table-panel"><div className="table-head"><span>FUNCIONÁRIO</span><span>HORAS</span><span>OBSERVAÇÃO</span><span></span></div>{list.map((o:Overtime)=><div className="table-row" key={o.id}><b>{name(o.employeeId)}</b><strong className="hours-value">{o.hours.toLocaleString("pt-BR")}h</strong><span className="table-note">{o.note||"—"}</span><button className="icon-button danger-hover" onClick={()=>onDelete(o.id)} aria-label="Excluir lançamento"><X size={17}/></button></div>)}</div>}
-  </>;
-}
 
 function TeamPage({ employees, query, setQuery, onAdd, onEdit, onToggle }: any) {
   const filtered = employees.filter((e:Employee)=>e.name.toLowerCase().includes(query.toLowerCase()));
   return <>
     <PageHeading eyebrow="EQUIPE" title="Funcionários" description="Cadastre e gerencie quem pode receber lançamentos." action={<button className="btn-primary" onClick={onAdd}><Plus size={17}/> Adicionar pessoa</button>}/>
     <div className="toolbar-card search-toolbar"><div className="search-box"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar funcionário..."/></div><span className="muted-count">{employees.filter((e:Employee)=>e.active).length} ativos</span></div>
-    <div className="team-grid">{filtered.map((e:Employee)=><div className="team-card" key={e.id}><div className="team-card-top"><div className="person-info"><div className="person-avatar">{e.name.split(" ").map((n:string)=>n[0]).slice(0,2).join("").toUpperCase()}</div><div><b>{e.name}</b><small>{e.role}</small></div></div><button className="icon-button" onClick={()=>onEdit(e)} aria-label="Editar funcionário"><Settings2 size={18}/></button></div><div className="team-card-bottom"><span className={e.active?"status-pill success":"status-pill warning"}>{e.active?"Ativo":"Inativo"}</span><button className="text-link" onClick={()=>onToggle(e.id)}>{e.active?"Remover da equipe":"Adicionar à equipe"}</button></div></div>)}</div>
+    <div className="team-grid">{filtered.map((e:Employee)=><div className="team-card" key={e.id}><div className="team-card-top"><div className="person-info"><div className="person-avatar">{e.name.split(" ").map((n:string)=>n[0]).slice(0,2).join("").toUpperCase()}</div><div><b>{e.name}</b></div></div><button className="icon-button" onClick={()=>onEdit(e)} aria-label="Editar funcionário"><Settings2 size={18}/></button></div><div className="team-card-bottom"><span className={e.active?"status-pill success":"status-pill warning"}>{e.active?"Ativo":"Inativo"}</span><button className="text-link" onClick={()=>onToggle(e.id)}>{e.active?"Remover da equipe":"Adicionar à equipe"}</button></div></div>)}</div>
     {filtered.length===0&&<div className="empty-state"><b>Nenhum funcionário encontrado</b><p>Tente outro nome ou cadastre uma pessoa.</p></div>}
   </>;
 }
 
 function ClosingPage({ rows, weekStart, setWeekStart, weekEnd, total, paidTotal, pendingCount, onTogglePaid, onExport }: any) {
   return <>
-    <PageHeading eyebrow="PAGAMENTO SEMANAL" title="Fechamento da semana" description="Confira as diárias e horas extras, depois marque quem já recebeu." action={<button className="btn-outline" onClick={onExport}><Download size={17}/> Exportar CSV</button>}/>
+    <PageHeading eyebrow="PAGAMENTO SEMANAL" title="Fechamento da semana" description="Confira os valores das diárias e marque quem já recebeu." action={<button className="btn-outline" onClick={onExport}><Download size={17}/> Exportar CSV</button>}/>
     <div className="week-selector"><button className="icon-button" onClick={()=>setWeekStart(shiftDate(weekStart,-7))}><ArrowLeft size={18}/></button><div><b>{fmtDate(weekStart)} – {fmtDate(weekEnd)}</b><small>Período de segunda a domingo</small></div><button className="icon-button" onClick={()=>setWeekStart(shiftDate(weekStart,7))}><ArrowRight size={18}/></button><button className="today-button" onClick={()=>setWeekStart(mondayOf(todayISO()))}>Semana atual</button></div>
     <div className="stats-grid closing-stats"><StatCard label="Total previsto" value={money(total)} detail="Diárias + horas extras" icon={CircleDollarSign} tone="green"/><StatCard label="Já marcado como pago" value={money(paidTotal)} detail="Pagamentos confirmados" icon={CheckCircle2} tone="blue"/><StatCard label="Pendentes" value={pendingCount} detail="Pessoas aguardando pagamento" icon={AlertCircle} tone="amber"/></div>
     <div className="section-title-row"><div><h2>Resumo por funcionário</h2><p>O total considera as diárias registradas. Hora extra aparece apenas como informação.</p></div></div>
@@ -236,11 +223,7 @@ function EmployeeModal({ employee, onClose, onSave }: any) {
   const submit=(e:React.FormEvent)=>{e.preventDefault();if(!name.trim())return;onSave({name:name.trim(),role:employee?.role??"Funcionário",dailyRate:employee?.dailyRate??120,hourlyRate:employee?.hourlyRate??0},employee?.id);};
   return <Modal title={employee?"Editar nome":"Adicionar pessoa"} onClose={onClose}><form onSubmit={submit} className="modal-form"><label>Nome completo<input required value={name} onChange={e=>setName(e.target.value)} placeholder="Nome do funcionário"/></label><div className="modal-actions"><button type="button" className="btn-outline" onClick={onClose}>Cancelar</button><button className="btn-primary" type="submit"><Check size={16}/> Salvar</button></div></form></Modal>;
 }
-function OvertimeModal({ employees, selectedDate, onClose, onSave }: any) {
-  const [employeeId,setEmployeeId]=useState(employees[0]?.id??""); const [date,setDate]=useState(selectedDate); const [hours,setHours]=useState("1"); const [note,setNote]=useState("");
-  const submit=(e:React.FormEvent)=>{e.preventDefault();if(employeeId&&Number(hours)>0)onSave(employeeId,date,Number(hours),note.trim());};
-  return <Modal title="Registrar hora extra" onClose={onClose}><form onSubmit={submit} className="modal-form"><label>Funcionário<select value={employeeId} onChange={e=>setEmployeeId(e.target.value)}>{employees.map((e:Employee)=><option value={e.id} key={e.id}>{e.name}</option>)}</select></label><div className="form-grid"><label>Data<input type="date" required value={date} onChange={e=>setDate(e.target.value)}/></label><label>Quantidade de horas<input type="number" min="0.25" step="0.25" required value={hours} onChange={e=>setHours(e.target.value)}/></label></div><label>Observação (opcional)<input value={note} onChange={e=>setNote(e.target.value)} placeholder="Ex.: ficou até mais tarde"/></label><div className="modal-actions"><button type="button" className="btn-outline" onClick={onClose}>Cancelar</button><button className="btn-primary" type="submit"><Check size={16}/> Salvar lançamento</button></div></form></Modal>;
-}
+
 function Modal({ title, children, onClose }: any) { return <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose();}}><div className="modal"><div className="modal-head"><h2>{title}</h2><button className="icon-button" onClick={onClose}><X size={19}/></button></div>{children}</div></div>; }
 
 export default App;
