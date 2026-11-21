@@ -1,29 +1,20 @@
-# Diária GM
+# RM — Gestão de Diárias
 
-Modelo inicial de um sistema mobile-first para administração de diárias, presença, faltas, horas extras e fechamento semanal.
+Sistema mobile-first para controle de funcionários, diárias, faltas e ocorrências de hora extra das filiais **JUÍNA** e **RODOTEC**.
 
-## Executar localmente
-
+## Desenvolvimento
 ```bash
 npm install
 npm run dev
 ```
 
-## Publicar na Vercel
+## Supabase
+Consulte [docs/SUPABASE_SETUP.md](docs/SUPABASE_SETUP.md) para criar o projeto, executar o schema, cadastrar o administrador e configurar as variáveis.
 
-Importe este repositório na Vercel. O framework será detectado como Vite. Comando de build: `npm run build`; diretório de saída: `dist`.
+- Schema e políticas RLS: `supabase/schema.sql`
+- Variáveis locais: copie `.env.example` para `.env.local`
+- O frontend usa somente Project URL e chave pública anon/publishable.
+- **Nunca exponha a service_role/secret key no frontend.**
 
-## Estado atual
-
-Esta primeira versão é um protótipo funcional que salva os lançamentos no armazenamento local do navegador (localStorage). Os dados ainda não são compartilhados entre dispositivos ou usuários. Antes de usar com dados reais, será necessário integrar Supabase Auth, banco de dados, isolamento por empresa (RLS) e backups.
-
-## Funcionalidades do protótipo
-
-- Cadastro e edição de funcionários e valor da diária.
-- Registro diário de presença, falta e folga.
-- Lançamento de horas extras por funcionário e por dia.
-- Resumo semanal por pessoa e total da equipe.
-- Marcação de pagamento da semana.
-- Exportação CSV do fechamento semanal.
-
-Os valores e nomes iniciais são fictícios e podem ser editados/excluídos.
+## Estado desta etapa
+Esta etapa prepara a dependência e o cliente Supabase, o modelo de dados com RLS e o guia de configuração. A interface operacional ainda mantém o armazenamento local nesta branch. Não utilize dados reais até concluir a próxima etapa de integração do login e das operações de leitura/escrita ao banco, seguida de testes com perfis admin e recorder.
