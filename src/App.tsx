@@ -25,7 +25,7 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 const days = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 function readStore<T>(key: string, fallback: T): T {
-  try { const raw = localStorage.getItem("diaria-gm-" + key); return raw ? JSON.parse(raw) as T : fallback; } catch { return fallback; }
+  try { const raw = localStorage.getItem("rm-" + key); return raw ? JSON.parse(raw) as T : fallback; } catch { return fallback; }
 }
 function App() {
   const [employees, setEmployees] = useState<Employee[]>(() => readStore("employees", []));
@@ -40,10 +40,10 @@ function App() {
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [toast, setToast] = useState("");
 
-  useEffect(() => { localStorage.setItem("diaria-gm-employees", JSON.stringify(employees)); }, [employees]);
-  useEffect(() => { localStorage.setItem("diaria-gm-attendance", JSON.stringify(attendance)); }, [attendance]);
-  useEffect(() => { localStorage.setItem("diaria-gm-overtime", JSON.stringify(overtime)); }, [overtime]);
-  useEffect(() => { localStorage.setItem("diaria-gm-payments", JSON.stringify(payments)); }, [payments]);
+  useEffect(() => { localStorage.setItem("rm-employees", JSON.stringify(employees)); }, [employees]);
+  useEffect(() => { localStorage.setItem("rm-attendance", JSON.stringify(attendance)); }, [attendance]);
+  useEffect(() => { localStorage.setItem("rm-overtime", JSON.stringify(overtime)); }, [overtime]);
+  useEffect(() => { localStorage.setItem("rm-payments", JSON.stringify(payments)); }, [payments]);
   useEffect(() => {
     const demoNames = new Set(["Carlos Henrique","Marcos Oliveira","João Pedro","Ana Paula","Pedro Santos","Rafael Lima"]);
     setEmployees(old => old.filter(e => {
@@ -112,18 +112,18 @@ function App() {
     { id: "equipe", label: "Equipe", icon: Users },
     { id: "fechamento", label: "Fechamento", icon: Wallet },
   ];
-  const title = nav.find(n => n.id === tab)?.label ?? "Diária GM";
+  const title = nav.find(n => n.id === tab)?.label ?? "RM";
 
   return <div className="app-shell">
     <aside className="sidebar">
-      <div className="brand"><div className="brand-mark">GM</div><div><strong>GM</strong><small>GESTÃO DE EQUIPE</small></div></div>
-      <div className="company-switch"><div className="company-avatar">G</div><div><b>GM</b><small>Gestão de equipe</small></div><ChevronDown size={16}/></div>
+      <div className="brand"><div className="brand-mark">RM</div><div><strong>RM</strong><small>GESTÃO RM</small></div></div>
+      <div className="company-switch"><div className="company-avatar">G</div><div><b>RM</b><small>Gestão de equipe</small></div><ChevronDown size={16}/></div>
       <nav className="side-nav">{nav.map(item => <button key={item.id} className={tab === item.id ? "nav-item active" : "nav-item"} onClick={() => setTab(item.id)}><item.icon size={19}/>{item.label}</button>)}</nav>
-      <div className="sidebar-bottom"><div className="help-card"><div className="help-icon"><Activity size={18}/></div><b>Controle simples, dia a dia.</b><p>Registre a equipe e feche a semana sem complicação.</p></div><div className="profile"><div className="profile-avatar">GM</div><div><b>Administrador</b><small>Gestor da empresa</small></div><MoreHorizontal size={18}/></div></div>
+      <div className="sidebar-bottom"><div className="help-card"><div className="help-icon"><Activity size={18}/></div><b>Controle simples, dia a dia.</b><p>Registre a equipe e feche a semana sem complicação.</p></div><div className="profile"><div className="profile-avatar">RM</div><div><b>Administrador</b><small>Gestor da empresa</small></div><MoreHorizontal size={18}/></div></div>
     </aside>
 
     <main className="main-content">
-      <header className="topbar"><div className="mobile-brand"><div className="brand-mark">GM</div><strong>GM</strong></div><div className="breadcrumb">Gestão da equipe <span>/</span> <b>{title}</b></div><div className="top-actions"><span className="today-label"><CalendarDays size={15}/>{new Date().toLocaleDateString("pt-BR",{weekday:"short",day:"2-digit",month:"short"})}</span><div className="top-avatar">GM</div></div></header>
+      <header className="topbar"><div className="mobile-brand"><div className="brand-mark">RM</div><strong>RM</strong></div><div className="breadcrumb">Gestão da equipe <span>/</span> <b>{title}</b></div><div className="top-actions"><span className="today-label"><CalendarDays size={15}/>{new Date().toLocaleDateString("pt-BR",{weekday:"short",day:"2-digit",month:"short"})}</span><div className="top-avatar">RM</div></div></header>
       <div className="page">
         {tab === "inicio" && <Dashboard employees={activeEmployees} summary={summary} weekTotal={weekTotal} pendingCount={pendingCount} setTab={setTab} selectedDate={selectedDate} setSelectedDate={setSelectedDate} weeklyRows={weeklyRows}/>}
         {tab === "diarias" && <DailyPage employees={employees} attendance={attendance} overtime={overtime} selectedDate={selectedDate} setSelectedDate={setSelectedDate} onAdd={addDailyRecord} onDelete={(employeeId: string, date: string) => { setAttendance(old => old.filter(a => !(a.employeeId === employeeId && a.date === date))); setOvertime(old => old.filter(o => !(o.employeeId === employeeId && o.date === date))); notify("Registro do dia removido"); }}/>} 
