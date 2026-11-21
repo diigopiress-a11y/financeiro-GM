@@ -171,7 +171,7 @@ function DailyPage({ employees, attendance, overtime, selectedDate, setSelectedD
   const [hasOvertime,setHasOvertime]=useState(false);
   const activeEmployees=employees.filter((e:Employee)=>e.active);
   const dayRows=attendance.filter((a:Attendance)=>a.date===selectedDate&&a.status==="worked");
-  const extraCount=overtime.filter((o:Overtime)=>o.date===selectedDate).length;
+  const extraCount=new Set(overtime.filter((o:Overtime)=>o.date===selectedDate).map((o:Overtime)=>o.employeeId)).size;
   const getPerson=(id:string)=>employees.find((e:Employee)=>e.id===id);
   const submit=(e:React.FormEvent)=>{e.preventDefault();if(!employeeId)return;onAdd(employeeId,Number(dailyRate) as 120|150,selectedDate,hasOvertime);setEmployeeId("");setDailyRate("120");setHasOvertime(false);};
   return <>
