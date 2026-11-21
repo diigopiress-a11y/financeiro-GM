@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 
 type Employee = { id: string; name: string; role: string; dailyRate: number; hourlyRate: number; active: boolean };
-type Attendance = { employeeId: string; date: string; status: "worked" | "absent" | "off"; note?: string };
+type Attendance = { employeeId: string; date: string; status: "worked" | "absent" | "off"; dailyRate?: 120 | 150; note?: string };
 type Overtime = { id: string; employeeId: string; date: string; hours: number; note: string };
 type Payment = { employeeId: string; weekStart: string; paid: boolean; paidAt?: string };
 
@@ -65,18 +65,19 @@ function App() {
     const todayRecords = attendance.filter(a => a.date === selectedDate);
     const worked = todayRecords.filter(a => a.status === "worked").length;
     const absent = todayRecords.filter(a => a.status === "absent").length;
-    const hours = overtime.filter(o => o.date === selectedDate).reduce((sum, o) => sum + o.hours, 0);
-    const dayValue = todayRecords.filter(a => a.status === "worked").reduce((sum, a) => { const person = employees.find(e => e.id === a.employeeId); const extra = overtime.filter(o => o.employeeId === a.employeeId && o.date === selectedDate).reduce((v,o)=>v+o.hours,0); return sum + (person?.dailyRate ?? 0) + extra * (person?.hourlyRate ?? 0); }, 0);
-    return { worked, absent, unmarked: 0, hours, dayValue };
+    const extraPeople = overtime.filter(o => o.date === selectedDate).length;
+    const dayValue = todayRecords.filter(a => a.status === "worked").reduce((sum, a) => { const person = employees.find(e => e.id === a.employeeId); return sum + (a.dailyRate ?? person?.dailyRate ?? 0); }, 0);
+    return { worked, absent, unmarked: 0, extraPeople, dayValue };
   }, [attendance, overtime, selectedDate, employees]);
 
   const weeklyRows = useMemo(() => employees.map(employee => {
-    const workedDays = attendance.filter(a => a.employeeId === employee.id && a.status === "worked" && a.date >= weekStart && a.date <= weekEnd).length;
+    const workedRecords = attendance.filter(a => a.employeeId === employee.id && a.status === "worked" && a.date >= weekStart && a.date <= weekEnd);
+    const workedDays = workedRecords.length;
     const absences = attendance.filter(a => a.employeeId === employee.id && a.status === "absent" && a.date >= weekStart && a.date <= weekEnd).length;
-    const extraHours = overtime.filter(o => o.employeeId === employee.id && o.date >= weekStart && o.date <= weekEnd).reduce((s, o) => s + o.hours, 0);
-    const total = workedDays * employee.dailyRate + extraHours * employee.hourlyRate;
+    const extraDays = overtime.filter(o => o.employeeId === employee.id && o.date >= weekStart && o.date <= weekEnd).length;
+    const total = workedRecords.reduce((sum, a) => sum + (a.dailyRate ?? employee.dailyRate), 0);
     const paid = payments.some(p => p.employeeId === employee.id && p.weekStart === weekStart && p.paid);
-    return { employee, workedDays, absences, extraHours, total, paid };
+    return { employee, workedDays, absences, extraDays, total, paid };
   }), [employees, attendance, overtime, payments, weekStart, weekEnd]);
   const weekTotal = weeklyRows.reduce((s, r) => s + r.total, 0);
   const paidTotal = weeklyRows.filter(r => r.paid).reduce((s, r) => s + r.total, 0);
@@ -88,8 +89,8 @@ function App() {
     notify(paid ? "Pagamento marcado como realizado" : "Pagamento voltou para pendente");
   };
   const exportCSV = () => {
-    const rows = [["Funcionário", "Diárias", "Faltas", "Horas extras", "Valor diária", "Valor hora extra", "Total", "Pagamento"],
-      ...weeklyRows.map(r => [r.employee.name, String(r.workedDays), String(r.absences), String(r.extraHours).replace(".", ","), String(r.employee.dailyRate), String(r.employee.hourlyRate), r.total.toFixed(2).replace(".", ","), r.paid ? "Pago" : "Pendente"])];
+    const rows = [["Funcionário", "Diárias", "Faltas", "Dias com hora extra", "Total", "Pagamento"],
+      ...weeklyRows.map(r => [r.employee.name, String(r.workedDays), String(r.absences), String(r.extraDays), r.total.toFixed(2).replace(".", ","), r.paid ? "Pago" : "Pendente"])];
     const csv = "\uFEFF" + rows.map(row => row.map(v => '"' + v.replace(/"/g, '""') + '"').join(";")).join("\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const a = document.createElement("a"); a.href = url; a.download = "fechamento-" + weekStart + ".csv"; a.click(); URL.revokeObjectURL(url);
@@ -99,18 +100,10 @@ function App() {
     else setEmployees(old => [...old, { ...data, id: uid(), active: true }]);
     setShowEmployee(false); setEditingEmployee(null); notify(id ? "Funcionário atualizado" : "Funcionário cadastrado");
   };
-  const addDailyRecord = (person: Omit<Employee, "id" | "active">, date: string, hours: number, note: string) => {
-    const normalized = person.name.trim().toLocaleLowerCase("pt-BR");
-    const existing = employees.find(e => e.name.trim().toLocaleLowerCase("pt-BR") === normalized);
-    const id = existing?.id ?? uid();
-    if (existing) setEmployees(old => old.map(e => e.id === id ? { ...e, ...person, active: true } : e));
-    else setEmployees(old => [...old, { ...person, id, active: true }]);
-    setAttendance(old => [...old.filter(a => !(a.employeeId === id && a.date === date)), { employeeId: id, date, status: "worked" }]);
-    setOvertime(old => [...old.filter(o => !(o.employeeId === id && o.date === date)), ...(hours > 0 ? [{ id: uid(), employeeId: id, date, hours, note }] : [])]);
-    notify("Diária e hora extra registradas");
-  };
-  const updateDailyHours = (employeeId: string, date: string, hours: number) => {
-    setOvertime(old => [...old.filter(o => !(o.employeeId === employeeId && o.date === date)), ...(hours > 0 ? [{ id: uid(), employeeId, date, hours, note: "" }] : [])]);
+  const addDailyRecord = (employeeId: string, dailyRate: 120 | 150, date: string, hasOvertime: boolean) => {
+    setAttendance(old => [...old.filter(a => !(a.employeeId === employeeId && a.date === date)), { employeeId, date, status: "worked", dailyRate }]);
+    setOvertime(old => [...old.filter(o => !(o.employeeId === employeeId && o.date === date)), ...(hasOvertime ? [{ id: uid(), employeeId, date, hours: 1, note: "Passou do horário de saída" }] : [])]);
+    notify("Diária registrada");
   };
 
   const nav = [
@@ -133,7 +126,7 @@ function App() {
       <header className="topbar"><div className="mobile-brand"><div className="brand-mark">GM</div><strong>GM</strong></div><div className="breadcrumb">Gestão da equipe <span>/</span> <b>{title}</b></div><div className="top-actions"><span className="today-label"><CalendarDays size={15}/>{new Date().toLocaleDateString("pt-BR",{weekday:"short",day:"2-digit",month:"short"})}</span><div className="top-avatar">GM</div></div></header>
       <div className="page">
         {tab === "inicio" && <Dashboard employees={activeEmployees} summary={summary} weekTotal={weekTotal} pendingCount={pendingCount} setTab={setTab} selectedDate={selectedDate} setSelectedDate={setSelectedDate} weeklyRows={weeklyRows}/>}
-        {tab === "diarias" && <DailyPage employees={employees} attendance={attendance} overtime={overtime} selectedDate={selectedDate} setSelectedDate={setSelectedDate} onAdd={addDailyRecord} onUpdateHours={updateDailyHours} onDelete={(employeeId: string, date: string) => { setAttendance(old => old.filter(a => !(a.employeeId === employeeId && a.date === date))); setOvertime(old => old.filter(o => !(o.employeeId === employeeId && o.date === date))); notify("Registro do dia removido"); }}/>} 
+        {tab === "diarias" && <DailyPage employees={employees} attendance={attendance} overtime={overtime} selectedDate={selectedDate} setSelectedDate={setSelectedDate} onAdd={addDailyRecord} onDelete={(employeeId: string, date: string) => { setAttendance(old => old.filter(a => !(a.employeeId === employeeId && a.date === date))); setOvertime(old => old.filter(o => !(o.employeeId === employeeId && o.date === date))); notify("Registro do dia removido"); }}/>} 
         {tab === "equipe" && <TeamPage employees={employees} query={query} setQuery={setQuery} onAdd={() => {setEditingEmployee(null);setShowEmployee(true);}} onEdit={(e: Employee) => {setEditingEmployee(e);setShowEmployee(true);}} onToggle={(id: string) => setEmployees((old: Employee[]) => old.map((e: Employee) => e.id === id ? {...e,active:!e.active}:e))}/>}
         {tab === "fechamento" && <ClosingPage rows={weeklyRows} weekStart={weekStart} setWeekStart={setWeekStart} weekEnd={weekEnd} total={weekTotal} paidTotal={paidTotal} pendingCount={pendingCount} onTogglePaid={togglePaid} onExport={exportCSV}/>}
       </div>
@@ -158,13 +151,13 @@ function Dashboard({ employees, summary, weekTotal, pendingCount, setTab, select
     <div className="stats-grid">
       <StatCard label="Trabalharam hoje" value={summary.worked} detail={"de " + employees.length + " funcionários ativos"} icon={UserRound} tone="green"/>
       <StatCard label="Faltas registradas" value={summary.absent} detail="Ausências neste dia" icon={AlertCircle} tone="red"/>
-      <StatCard label="Horas extras hoje" value={summary.hours.toLocaleString("pt-BR") + "h"} detail="Lançadas pela equipe" icon={Clock3} tone="blue"/>
+      <StatCard label="Com hora extra" value={summary.extraPeople} detail="Passaram do horário de saída" icon={Clock3} tone="blue"/>
       <StatCard label="Valor lançado hoje" value={money(summary.dayValue)} detail="Diárias + horas extras" icon={Wallet} tone="amber"/>
     </div>
     <div className="dashboard-grid">
       <section className="panel daily-focus"><div className="panel-head"><div><h2>Resumo da semana</h2><p>Prévia do fechamento semanal</p></div><button className="text-link" onClick={() => setTab("fechamento")}>Ver fechamento <ArrowRight size={15}/></button></div>
         <div className="weekly-highlight"><div><span>Valor previsto da equipe</span><strong>{money(weekTotal)}</strong></div><div className="highlight-icon"><Wallet size={22}/></div></div>
-        <div className="mini-metrics"><div><b>{weeklyRows.reduce((s: number,r: any)=>s+r.workedDays,0)}</b><span>Diárias registradas</span></div><div><b>{weeklyRows.reduce((s: number,r: any)=>s+r.extraHours,0).toLocaleString("pt-BR")}h</b><span>Horas extras</span></div><div><b>{pendingCount}</b><span>Pagamentos pendentes</span></div></div>
+        <div className="mini-metrics"><div><b>{weeklyRows.reduce((s: number,r: any)=>s+r.workedDays,0)}</b><span>Diárias registradas</span></div><div><b>{weeklyRows.reduce((s: number,r: any)=>s+r.extraDays,0)}</b><span>Dias com extra</span></div><div><b>{pendingCount}</b><span>Pagamentos pendentes</span></div></div>
       </section>
       <section className="panel quick-panel"><div className="panel-head"><div><h2>Acesso rápido</h2><p>O que você precisa fazer?</p></div></div><button className="quick-action" onClick={() => setTab("diarias")}><span className="quick-icon green"><CalendarCheck size={19}/></span><span><b>Conferir diárias do dia</b><small>Marcar presença ou falta</small></span><ArrowRight size={17}/></button><button className="quick-action" onClick={() => setTab("diarias")}><span className="quick-icon blue"><Clock3 size={19}/></span><span><b>Adicionar diária e extra</b><small>Faça os dois lançamentos juntos</small></span><ArrowRight size={17}/></button><button className="quick-action" onClick={() => setTab("equipe")}><span className="quick-icon amber"><Users size={19}/></span><span><b>Administrar equipe</b><small>Adicionar ou editar funcionários</small></span><ArrowRight size={17}/></button></section>
     </div>
@@ -172,41 +165,36 @@ function Dashboard({ employees, summary, weekTotal, pendingCount, setTab, select
   </>;
 }
 
-function DailyPage({ employees, attendance, overtime, selectedDate, setSelectedDate, onAdd, onUpdateHours, onDelete }: any) {
-  const [name,setName] = useState("");
-  const [role,setRole] = useState("");
-  const [hourly,setHourly] = useState("20");
-  const [hours,setHours] = useState("0");
-  const [note,setNote] = useState("");
-  const isCargueiro = role.trim().toLocaleLowerCase("pt-BR").includes("cargueiro");
-  const dailyRate = isCargueiro ? 150 : 120;
-  const dayRows = attendance.filter((a: Attendance)=>a.date===selectedDate && a.status==="worked");
-  const dayHours = overtime.filter((o: Overtime)=>o.date===selectedDate).reduce((s:number,o:Overtime)=>s+o.hours,0);
-  const getPerson = (id:string) => employees.find((e:Employee)=>e.id===id);
-  const submit = (e:React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) return;
-    onAdd({ name:name.trim(), role:role.trim()||"Diária", dailyRate, hourlyRate:Number(hourly) },selectedDate,Number(hours),note.trim());
-    setName(""); setRole(""); setHourly("20"); setHours("0"); setNote("");
-  };
+function DailyPage({ employees, attendance, overtime, selectedDate, setSelectedDate, onAdd, onDelete }: any) {
+  const [employeeId,setEmployeeId]=useState("");
+  const [dailyRate,setDailyRate]=useState<"120"|"150">("120");
+  const [hasOvertime,setHasOvertime]=useState(false);
+  const activeEmployees=employees.filter((e:Employee)=>e.active);
+  const dayRows=attendance.filter((a:Attendance)=>a.date===selectedDate&&a.status==="worked");
+  const extraCount=overtime.filter((o:Overtime)=>o.date===selectedDate).length;
+  const getPerson=(id:string)=>employees.find((e:Employee)=>e.id===id);
+  const submit=(e:React.FormEvent)=>{e.preventDefault();if(!employeeId)return;onAdd(employeeId,Number(dailyRate) as 120|150,selectedDate,hasOvertime);setEmployeeId("");setDailyRate("120");setHasOvertime(false);};
   return <>
-    <PageHeading eyebrow="LANÇAMENTO DO DIA" title="Diárias do dia" description="Digite manualmente o nome de cada pessoa que trabalhou. A diária é R$ 120, ou R$ 150 para cargueiros, e as horas extras entram no mesmo lançamento."/>
-    <div className="toolbar-card"><div className="date-picker-wrap"><CalendarDays size={18}/><label>Dia do serviço<input type="date" value={selectedDate} onChange={e=>setSelectedDate(e.target.value)}/></label></div><div className="toolbar-counts"><span className="count-green">{dayRows.length} pessoas lançadas</span><span>{dayHours.toLocaleString("pt-BR")}h extras</span></div></div>
-    <section className="panel" style={{padding:20,marginBottom:22}}>
-      <div className="panel-head"><div><h2>Adicionar pessoa ao dia</h2><p>Informe o nome manualmente. Não é necessário cadastrar a pessoa antes.</p></div></div>
+    <PageHeading eyebrow="LANÇAMENTO" title="Diárias" description="Selecione a pessoa, escolha o valor e marque se passou do horário."/>
+    <div className="toolbar-card"><div className="date-picker-wrap"><CalendarDays size={18}/><label>Data do serviço<input type="date" value={selectedDate} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setSelectedDate(e.target.value)}/></label></div><div className="toolbar-counts"><span className="count-green">{dayRows.length} lançadas</span><span>{extraCount} com hora extra</span></div></div>
+    <section className="panel daily-entry"><div className="panel-head"><div><h2>Novo lançamento</h2><p>Um registro por pessoa em cada dia.</p></div></div>
+      {activeEmployees.length===0?<div className="empty-inline"><Users size={19}/><span>Cadastre os funcionários na aba Equipe para começar.</span></div>:
       <form className="modal-form" onSubmit={submit}>
-        <label><span>Nome de quem trabalhou</span><input required value={name} onChange={e=>setName(e.target.value)} placeholder="Digite o nome completo"/></label>
-        <label><span>Função / cargo</span><select value={role} onChange={e=>setRole(e.target.value)}><option value="">Outras funções (diária R$ 120)</option><option value="Ajudante">Ajudante</option><option value="Auxiliar">Auxiliar</option><option value="Motorista">Motorista</option><option value="Operador">Operador</option><option value="Cargueiro">Cargueiro (diária R$ 150)</option></select></label>
-        <div className="form-grid"><label>Valor da diária<input type="text" readOnly value={money(dailyRate)}/></label><label>Valor da hora extra (R$)<input type="number" min="0" step="0.01" required value={hourly} onChange={e=>setHourly(e.target.value)}/></label></div>
-        <div className="form-grid"><label>Horas extras no dia<input type="number" min="0" step="0.25" value={hours} onChange={e=>setHours(e.target.value)}/></label><label>Observação (opcional)<input value={note} onChange={e=>setNote(e.target.value)} placeholder="Ex.: passou 2h do horário"/></label></div>
-        <div className="modal-actions"><button className="btn-primary" type="submit"><Plus size={16}/> Adicionar diária + extras</button></div>
-      </form>
+        <label><span>Funcionário</span><select required value={employeeId} onChange={e=>setEmployeeId(e.target.value)}><option value="">Selecione uma pessoa</option>{activeEmployees.map((e:Employee)=><option key={e.id} value={e.id}>{e.name}</option>)}</select></label>
+        <div className="rate-options" role="group" aria-label="Valor da diária">
+          <button type="button" className={dailyRate==="120"?"rate-option selected":"rate-option"} onClick={()=>setDailyRate("120")}><small>Diária</small><b>R$ 120</b></button>
+          <button type="button" className={dailyRate==="150"?"rate-option selected":"rate-option"} onClick={()=>setDailyRate("150")}><small>Cargueiro</small><b>R$ 150</b></button>
+        </div>
+        <label className="overtime-toggle"><input type="checkbox" checked={hasOvertime} onChange={e=>setHasOvertime(e.target.checked)}/><span><b>Fez hora extra</b><small>Passou do horário de saída</small></span></label>
+        <div className="modal-actions"><button className="btn-primary" type="submit"><Plus size={16}/> Salvar diária</button></div>
+      </form>}
     </section>
-    <div className="section-title-row"><div><h2>Pessoas lançadas neste dia</h2><p>Confira os valores e ajuste as horas extras se necessário.</p></div><span className="muted-count">{dayRows.length} lançamentos</span></div>
-    {dayRows.length===0?<div className="empty-state"><div className="empty-icon"><Users size={25}/></div><b>Ninguém lançado neste dia ainda</b><p>Digite acima os nomes de quem compareceu.</p></div>:<div className="attendance-list">{dayRows.map((a:Attendance)=>{const p=getPerson(a.employeeId);const extra=overtime.find((o:Overtime)=>o.employeeId===a.employeeId&&o.date===selectedDate);const rate=p?.dailyRate??0;const hr=p?.hourlyRate??0;const h=extra?.hours??0;return <div className="attendance-card" key={a.employeeId}><div className="person-info"><div className="person-avatar">{(p?.name??"??").split(" ").map((n:string)=>n[0]).slice(0,2).join("").toUpperCase()}</div><div><b>{p?.name??"Nome não encontrado"}</b><small>{money(rate)} diária · {h.toLocaleString("pt-BR")}h × {money(hr)}/h</small><small className="table-note">Total do dia: <b>{money(rate+h*hr)}</b></small></div></div><div className="status-actions"><label style={{display:"grid",gap:4,fontSize:12}}>Horas extras<input aria-label="Horas extras" style={{width:82}} type="number" min="0" step="0.25" value={h} onChange={e=>onUpdateHours(a.employeeId,selectedDate,Number(e.target.value))}/></label><button className="icon-button danger-hover" aria-label="Remover pessoa do dia" onClick={()=>onDelete(a.employeeId,selectedDate)}><X size={17}/></button></div></div>})}</div>}
-    <div className="tip-box"><AlertCircle size={17}/><span>O fechamento semanal soma as diárias lançadas e as horas extras. Os nomes são digitados livremente a cada dia; se repetir o mesmo nome, o sistema associa à mesma pessoa.</span></div>
+    <div className="section-title-row"><div><h2>Lançamentos do dia</h2><p>Diárias e ocorrências de hora extra.</p></div><span className="muted-count">{dayRows.length} pessoas</span></div>
+    {dayRows.length===0?<div className="empty-state"><div className="empty-icon"><Users size={25}/></div><b>Nenhum lançamento nesta data</b><p>Adicione as pessoas que trabalharam.</p></div>:
+    <div className="attendance-list">{dayRows.map((a:Attendance)=>{const person=getPerson(a.employeeId);const rate=a.dailyRate??person?.dailyRate??120;const extra=overtime.some((o:Overtime)=>o.employeeId===a.employeeId&&o.date===selectedDate);return <div className="attendance-card daily-record" key={a.employeeId}><div className="person-info"><div className="person-avatar">{(person?.name??"?").split(" ").map((n:string)=>n[0]).slice(0,2).join("").toUpperCase()}</div><div><b>{person?.name??"Funcionário não encontrado"}</b><small>{money(rate)}</small></div></div><div className="record-actions"><span className={extra?"extra-flag active":"extra-flag"}>{extra?"Com hora extra":"Sem hora extra"}</span><button className="icon-button danger-hover" aria-label="Remover lançamento do dia" onClick={()=>onDelete(a.employeeId,selectedDate)}><X size={17}/></button></div></div>})}</div>}
   </>;
 }
+
 function OvertimePage({ overtime, employees, onAdd, onDelete }: any) {
   const [filterDate,setFilterDate] = useState(todayISO());
   const list = overtime.filter((o: Overtime)=>o.date===filterDate).sort((a: Overtime,b: Overtime)=>b.date.localeCompare(a.date));
@@ -222,11 +210,11 @@ function OvertimePage({ overtime, employees, onAdd, onDelete }: any) {
 }
 
 function TeamPage({ employees, query, setQuery, onAdd, onEdit, onToggle }: any) {
-  const filtered = employees.filter((e:Employee)=>e.name.toLowerCase().includes(query.toLowerCase())||e.role.toLowerCase().includes(query.toLowerCase()));
+  const filtered = employees.filter((e:Employee)=>e.name.toLowerCase().includes(query.toLowerCase()));
   return <>
-    <PageHeading eyebrow="CADASTRO" title="Equipe" description="Cadastre as pessoas e defina o valor da diária e da hora extra." action={<button className="btn-primary" onClick={onAdd}><Plus size={17}/> Novo funcionário</button>}/>
+    <PageHeading eyebrow="EQUIPE" title="Funcionários" description="Cadastre e gerencie quem pode receber lançamentos." action={<button className="btn-primary" onClick={onAdd}><Plus size={17}/> Adicionar pessoa</button>}/>
     <div className="toolbar-card search-toolbar"><div className="search-box"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar funcionário..."/></div><span className="muted-count">{employees.filter((e:Employee)=>e.active).length} ativos</span></div>
-    <div className="team-grid">{filtered.map((e:Employee)=><div className="team-card" key={e.id}><div className="team-card-top"><div className="person-info"><div className="person-avatar">{e.name.split(" ").map((n:string)=>n[0]).slice(0,2).join("").toUpperCase()}</div><div><b>{e.name}</b><small>{e.role}</small></div></div><button className="icon-button" onClick={()=>onEdit(e)} aria-label="Editar funcionário"><Settings2 size={18}/></button></div><div className="rate-row"><div><small>Valor da diária</small><b>{money(e.dailyRate)}</b></div><div><small>Hora extra</small><b>{money(e.hourlyRate)}/h</b></div></div><div className="team-card-bottom"><span className={e.active?"status-pill success":"status-pill warning"}>{e.active?"Ativo":"Inativo"}</span><button className="text-link" onClick={()=>onToggle(e.id)}>{e.active?"Desativar":"Ativar"}</button></div></div>)}</div>
+    <div className="team-grid">{filtered.map((e:Employee)=><div className="team-card" key={e.id}><div className="team-card-top"><div className="person-info"><div className="person-avatar">{e.name.split(" ").map((n:string)=>n[0]).slice(0,2).join("").toUpperCase()}</div><div><b>{e.name}</b><small>{e.role}</small></div></div><button className="icon-button" onClick={()=>onEdit(e)} aria-label="Editar funcionário"><Settings2 size={18}/></button></div><div className="team-card-bottom"><span className={e.active?"status-pill success":"status-pill warning"}>{e.active?"Ativo":"Inativo"}</span><button className="text-link" onClick={()=>onToggle(e.id)}>{e.active?"Remover da equipe":"Adicionar à equipe"}</button></div></div>)}</div>
     {filtered.length===0&&<div className="empty-state"><b>Nenhum funcionário encontrado</b><p>Tente outro nome ou cadastre uma pessoa.</p></div>}
   </>;
 }
@@ -236,17 +224,17 @@ function ClosingPage({ rows, weekStart, setWeekStart, weekEnd, total, paidTotal,
     <PageHeading eyebrow="PAGAMENTO SEMANAL" title="Fechamento da semana" description="Confira as diárias e horas extras, depois marque quem já recebeu." action={<button className="btn-outline" onClick={onExport}><Download size={17}/> Exportar CSV</button>}/>
     <div className="week-selector"><button className="icon-button" onClick={()=>setWeekStart(shiftDate(weekStart,-7))}><ArrowLeft size={18}/></button><div><b>{fmtDate(weekStart)} – {fmtDate(weekEnd)}</b><small>Período de segunda a domingo</small></div><button className="icon-button" onClick={()=>setWeekStart(shiftDate(weekStart,7))}><ArrowRight size={18}/></button><button className="today-button" onClick={()=>setWeekStart(mondayOf(todayISO()))}>Semana atual</button></div>
     <div className="stats-grid closing-stats"><StatCard label="Total previsto" value={money(total)} detail="Diárias + horas extras" icon={CircleDollarSign} tone="green"/><StatCard label="Já marcado como pago" value={money(paidTotal)} detail="Pagamentos confirmados" icon={CheckCircle2} tone="blue"/><StatCard label="Pendentes" value={pendingCount} detail="Pessoas aguardando pagamento" icon={AlertCircle} tone="amber"/></div>
-    <div className="section-title-row"><div><h2>Resumo por funcionário</h2><p>O total considera apenas os dias marcados como “Fez” e as horas extras lançadas.</p></div></div>
-    <div className="closing-list">{rows.map((r:any)=><div className="closing-card" key={r.employee.id}><div className="closing-main"><div className="person-avatar">{r.employee.name.split(" ").map((n:string)=>n[0]).slice(0,2).join("").toUpperCase()}</div><div className="closing-name"><b>{r.employee.name}</b><small>{r.workedDays} diárias · {r.absences} faltas · {r.extraHours.toLocaleString("pt-BR")}h extras</small></div><div className="closing-total"><b>{money(r.total)}</b><small>{r.paid?"Pagamento realizado":"Aguardando pagamento"}</small></div></div><div className="closing-bottom"><span className={r.paid?"status-pill success":"status-pill warning"}>{r.paid?"Pago":"Pendente"}</span><button className={r.paid?"btn-paid":"btn-mark-paid"} disabled={r.total===0} onClick={()=>onTogglePaid(r.employee.id,!r.paid)}>{r.paid?<><CheckCircle2 size={15}/> Pago</>:<><Check size={15}/> Marcar como pago</>}</button></div></div>)}</div>
+    <div className="section-title-row"><div><h2>Resumo por funcionário</h2><p>O total considera as diárias registradas. Hora extra aparece apenas como informação.</p></div></div>
+    <div className="closing-list">{rows.map((r:any)=><div className="closing-card" key={r.employee.id}><div className="closing-main"><div className="person-avatar">{r.employee.name.split(" ").map((n:string)=>n[0]).slice(0,2).join("").toUpperCase()}</div><div className="closing-name"><b>{r.employee.name}</b><small>{r.workedDays} diárias · {r.absences} faltas · {r.extraDays} dias com extra</small></div><div className="closing-total"><b>{money(r.total)}</b><small>{r.paid?"Pagamento realizado":"Aguardando pagamento"}</small></div></div><div className="closing-bottom"><span className={r.paid?"status-pill success":"status-pill warning"}>{r.paid?"Pago":"Pendente"}</span><button className={r.paid?"btn-paid":"btn-mark-paid"} disabled={r.total===0} onClick={()=>onTogglePaid(r.employee.id,!r.paid)}>{r.paid?<><CheckCircle2 size={15}/> Pago</>:<><Check size={15}/> Marcar como pago</>}</button></div></div>)}</div>
     <div className="closing-total-bar"><span>Total da semana</span><b>{money(total)}</b></div>
-    <div className="tip-box"><AlertCircle size={17}/><span>Este fechamento é um controle interno. Marcar como pago não realiza transferência bancária; apenas registra a baixa no sistema.</span></div>
+    <div className="tip-box"><AlertCircle size={17}/><span>Hora extra é apenas um registro de que a pessoa passou do horário de saída. Não altera o valor da diária.</span></div>
   </>;
 }
 
 function EmployeeModal({ employee, onClose, onSave }: any) {
-  const [name,setName]=useState(employee?.name??""); const [role,setRole]=useState(employee?.role??""); const [daily,setDaily]=useState(String(employee?.dailyRate??"")); const [hourly,setHourly]=useState(String(employee?.hourlyRate??""));
-  const submit=(e:React.FormEvent)=>{e.preventDefault();if(!name.trim()||Number(daily)<0||Number(hourly)<0)return;onSave({name:name.trim(),role:role.trim()||"Funcionário",dailyRate:Number(daily),hourlyRate:Number(hourly)},employee?.id);};
-  return <Modal title={employee?"Editar funcionário":"Novo funcionário"} onClose={onClose}><form onSubmit={submit} className="modal-form"><label>Nome completo<input required value={name} onChange={e=>setName(e.target.value)} placeholder="Ex.: João da Silva"/></label><label>Função / cargo<input value={role} onChange={e=>setRole(e.target.value)} placeholder="Ex.: Auxiliar"/></label><div className="form-grid"><label>Valor da diária (R$)<input type="number" min="0" step="0.01" required value={daily} onChange={e=>setDaily(e.target.value)}/></label><label>Valor da hora extra (R$)<input type="number" min="0" step="0.01" required value={hourly} onChange={e=>setHourly(e.target.value)}/></label></div><div className="modal-actions"><button type="button" className="btn-outline" onClick={onClose}>Cancelar</button><button className="btn-primary" type="submit"><Check size={16}/> Salvar funcionário</button></div></form></Modal>;
+  const [name,setName]=useState(employee?.name??"");
+  const submit=(e:React.FormEvent)=>{e.preventDefault();if(!name.trim())return;onSave({name:name.trim(),role:employee?.role??"Funcionário",dailyRate:employee?.dailyRate??120,hourlyRate:employee?.hourlyRate??0},employee?.id);};
+  return <Modal title={employee?"Editar nome":"Adicionar pessoa"} onClose={onClose}><form onSubmit={submit} className="modal-form"><label>Nome completo<input required value={name} onChange={e=>setName(e.target.value)} placeholder="Nome do funcionário"/></label><div className="modal-actions"><button type="button" className="btn-outline" onClick={onClose}>Cancelar</button><button className="btn-primary" type="submit"><Check size={16}/> Salvar</button></div></form></Modal>;
 }
 function OvertimeModal({ employees, selectedDate, onClose, onSave }: any) {
   const [employeeId,setEmployeeId]=useState(employees[0]?.id??""); const [date,setDate]=useState(selectedDate); const [hours,setHours]=useState("1"); const [note,setNote]=useState("");
