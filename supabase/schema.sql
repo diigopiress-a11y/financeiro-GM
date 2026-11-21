@@ -68,6 +68,7 @@ create table if not exists public.overtime (
   created_by uuid not null default auth.uid() references auth.users(id),
   created_at timestamptz not null default now(),
   foreign key (branch_id, company_id) references public.branches(id, company_id),
+  foreign key (employee_id, branch_id, company_id) references public.employees(id, branch_id, company_id) on delete cascade,
   unique(employee_id, work_date)
 );
 
