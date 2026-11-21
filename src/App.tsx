@@ -1,10 +1,10 @@
 import * as React from "react";
 import { useEffect, useMemo, useState } from "react";
 import {
-  Activity, ArrowDownToLine, ArrowLeft, ArrowRight, CalendarDays, Check,
+  Activity, ArrowLeft, ArrowRight, CalendarDays, Check,
   CheckCircle2, ChevronDown, CircleDollarSign, Clock3, Download, LayoutDashboard,
-  Menu, Plus, Search, Settings2, Users, Wallet, X, UserRound, CalendarCheck,
-  AlertCircle, ClipboardList, MoreHorizontal
+  Plus, Search, Settings2, Users, Wallet, X, UserRound, CalendarCheck,
+  AlertCircle, MoreHorizontal
 } from "lucide-react";
 
 type Employee = { id: string; name: string; role: string; dailyRate: number; hourlyRate: number; active: boolean };
