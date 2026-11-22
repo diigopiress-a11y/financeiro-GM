@@ -117,7 +117,7 @@ function App() {
   return <div className="app-shell">
     <aside className="sidebar">
       <div className="brand"><div className="brand-mark">RM</div><div><strong>RM</strong><small>GESTÃO RM</small></div></div>
-      <div className="company-switch"><div className="company-avatar">G</div><div><b>RM</b><small>Gestão de equipe</small></div><ChevronDown size={16}/></div>
+      <div className="company-switch"><div className="company-avatar">RM</div><div><b>RM</b><small>Gestão de equipe</small></div><ChevronDown size={16}/></div>
       <nav className="side-nav">{nav.map(item => <button key={item.id} className={tab === item.id ? "nav-item active" : "nav-item"} onClick={() => setTab(item.id)}><item.icon size={19}/>{item.label}</button>)}</nav>
       <div className="sidebar-bottom"><div className="help-card"><div className="help-icon"><Activity size={18}/></div><b>Controle simples, dia a dia.</b><p>Registre a equipe e feche a semana sem complicação.</p></div><div className="profile"><div className="profile-avatar">RM</div><div><b>Administrador</b><small>Gestor da empresa</small></div><MoreHorizontal size={18}/></div></div>
     </aside>
