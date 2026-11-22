@@ -85,6 +85,7 @@ export default function App() {
     finally{setLoading(false);}
   },[]);
   useEffect(()=>{
+    if(!isSupabaseConfigured || !supabase){setLoading(false);return;}
     let alive=true;
     db.auth.getSession().then(async ({data})=>{
       if(!alive)return;
