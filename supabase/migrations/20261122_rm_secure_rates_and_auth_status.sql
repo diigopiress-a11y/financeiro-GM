@@ -25,6 +25,32 @@ alter table public.employees drop column if exists daily_rate;
 alter table public.employees add column if not exists effective_from date not null default current_date;
 alter table public.attendance drop column if exists daily_rate;
 
+
+-- Registra automaticamente o valor vigente no momento da diária, inclusive
+-- quando o lançamento é feito pelo responsável da filial.
+create or replace function public.snapshot_attendance_rate()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $
+begin
+  insert into public.attendance_rates (attendance_id, daily_rate)
+  select new.id, er.daily_rate
+  from public.employee_rates er
+  where er.employee_id = new.employee_id
+  on conflict (attendance_id) do nothing;
+  return new;
+end;
+$;
+
+drop trigger if exists attendance_rate_snapshot on public.attendance;
+create trigger attendance_rate_snapshot
+after insert on public.attendance
+for each row execute function public.snapshot_attendance_rate();
+
+revoke all on function public.snapshot_attendance_rate() from public, anon, authenticated;
+
 alter table public.employee_rates enable row level security;
 alter table public.attendance_rates enable row level security;
 
