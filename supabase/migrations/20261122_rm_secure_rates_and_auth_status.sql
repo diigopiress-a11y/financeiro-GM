@@ -33,7 +33,7 @@ returns trigger
 language plpgsql
 security definer
 set search_path = public, pg_temp
-as $
+as $$
 begin
   insert into public.attendance_rates (attendance_id, daily_rate)
   select new.id, er.daily_rate
@@ -42,7 +42,7 @@ begin
   on conflict (attendance_id) do nothing;
   return new;
 end;
-$;
+$$;
 
 drop trigger if exists attendance_rate_snapshot on public.attendance;
 create trigger attendance_rate_snapshot
