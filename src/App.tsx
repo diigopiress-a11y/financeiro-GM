@@ -64,15 +64,17 @@ export default function App() {
     if(!selectedBranch) return;
     setLoading(true);
     try {
-      const [empRes,attRes,otRes,payRes,rateRes,attRateRes]=await Promise.all([
-        db.from("employees").select("id,company_id,branch_id,name,active,effective_from").eq("company_id",p.company_id).eq("branch_id",selectedBranch).order("name"),
+      const empRes=await db.from("employees").select("id,company_id,branch_id,name,active,effective_from").eq("company_id",p.company_id).eq("branch_id",selectedBranch).order("name");
+      if(empRes.error) throw empRes.error;
+      const employeeIds=(empRes.data??[]).map((e:any)=>e.id);
+      const [attRes,otRes,payRes,rateRes,attRateRes]=await Promise.all([
         db.from("attendance").select("id,company_id,branch_id,employee_id,work_date,status").eq("company_id",p.company_id).eq("branch_id",selectedBranch),
         db.from("overtime").select("id,employee_id,work_date,branch_id,company_id").eq("company_id",p.company_id).eq("branch_id",selectedBranch),
         p.role==="admin" ? db.from("payments").select("employee_id,week_start,paid,paid_at").eq("company_id",p.company_id).eq("branch_id",selectedBranch) : Promise.resolve({data:[],error:null} as any),
-        p.role==="admin" ? db.from("employee_rates").select("employee_id,daily_rate").in("employee_id", (empRes.data??[]).map((e:any)=>e.id)) : Promise.resolve({data:[],error:null} as any),
+        p.role==="admin"&&employeeIds.length ? db.from("employee_rates").select("employee_id,daily_rate").in("employee_id",employeeIds) : Promise.resolve({data:[],error:null} as any),
         p.role==="admin" ? db.from("attendance_rates").select("attendance_id,daily_rate") : Promise.resolve({data:[],error:null} as any)
       ]);
-      for(const r of [empRes,attRes,otRes,payRes,rateRes,attRateRes]) if(r.error) throw r.error;
+      for(const r of [attRes,otRes,payRes,rateRes,attRateRes]) if(r.error) throw r.error;
       const rates=new Map((rateRes.data??[]).map((r:any)=>[r.employee_id,r.daily_rate]));
       const attRates=new Map((attRateRes.data??[]).map((r:any)=>[r.attendance_id,r.daily_rate]));
       setEmployees((empRes.data??[]).map((e:any)=>({...e,dailyRate:(rates.get(e.id)??120) as 120|150})));
