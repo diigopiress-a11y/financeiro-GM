@@ -80,3 +80,20 @@ body{background:#f4f4f4;color:#171717}
 .daily-record .person-info{flex:1}
 @media(max-width:760px){.daily-entry{max-width:none}.daily-record{flex-direction:row;align-items:center}.record-actions{flex-shrink:0}.extra-flag{font-size:9px;padding:7px 8px}}
 @media(max-width:370px){.record-actions{gap:2px}.extra-flag{font-size:8px;padding:6px}}
+
+/* Autenticação RM e avisos */
+.login-screen{min-height:100vh;display:grid;place-items:center;padding:24px;background:#f5f5f5}
+.login-card{width:min(100%,430px);background:#fff;border:1px solid #e7e7e7;border-radius:18px;padding:34px;box-shadow:0 18px 55px #0000000b}
+.login-card h1{font:700 27px Manrope,sans-serif;color:#171717;margin:22px 0 8px}
+.login-card>p{font-size:13px;color:#777;margin:0 0 24px;line-height:1.6}
+.login-brand{display:flex;align-items:center;gap:12px;color:#171717}
+.login-brand>div:last-child{display:grid;gap:2px}
+.login-brand small{font-size:10px;color:#888;letter-spacing:1.2px}
+.login-card .modal-form{display:grid;gap:15px}
+.login-card .btn-primary{width:100%;justify-content:center;min-height:46px}
+.error-text{color:#a12626!important;font-size:12px!important;margin:0!important}
+.error-banner{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#fff1f1;border:1px solid #f0caca;color:#8d2424;border-radius:10px;font-size:12px;margin-bottom:18px}
+.error-banner button{margin-left:auto;border:0;background:transparent;color:inherit;cursor:pointer}
+.company-switch select{max-width:150px;border:1px solid #ddd;border-radius:8px;padding:7px;background:#fff}
+.profile{gap:10px}
+.profile .icon-button{margin-left:auto}
