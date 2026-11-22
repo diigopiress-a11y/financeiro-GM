@@ -22,7 +22,7 @@ select id, daily_rate from public.attendance where daily_rate in (120,150)
 on conflict (attendance_id) do nothing;
 
 alter table public.employees drop column if exists daily_rate;
-alter table public.employees drop column if exists effective_from;
+alter table public.employees add column if not exists effective_from date not null default current_date;
 alter table public.attendance drop column if exists daily_rate;
 
 alter table public.employee_rates enable row level security;
@@ -62,7 +62,7 @@ with check (
 
 -- Apenas colunas operacionais são liberadas para os usuários autenticados.
 revoke all on public.employees from anon, authenticated;
-grant select (id, company_id, branch_id, name, active, created_at) on public.employees to authenticated;
+grant select (id, company_id, branch_id, name, active, created_at, effective_from) on public.employees to authenticated;
 grant insert (company_id, branch_id, name, active) on public.employees to authenticated;
 grant update (name, active) on public.employees to authenticated;
 grant delete on public.employees to authenticated;
