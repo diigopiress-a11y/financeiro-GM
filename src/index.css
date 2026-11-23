@@ -138,3 +138,34 @@ body{background:#f4f4f4;color:#171717}
  .week-employee-row>strong{margin-left:auto}
  .week-employee-row .btn-mark-paid,.week-employee-row .btn-paid{width:100%}
 }
+
+
+/* Ajustes mobile: acesso ao logout e navegação inferior responsiva */
+.mobile-signout{display:none}
+@media(max-width:760px){
+  .mobile-signout{
+    display:inline-flex;align-items:center;justify-content:center;gap:5px;
+    border:1px solid #dedede;border-radius:8px;background:#fff;color:#222;
+    min-height:34px;padding:0 9px;font-size:11px;font-weight:700;cursor:pointer;
+    flex-shrink:0
+  }
+  .top-actions{gap:8px}
+  .mobile-nav{
+    grid-template-columns:repeat(5,minmax(0,1fr));
+    height:calc(68px + env(safe-area-inset-bottom));
+    padding:6px 4px calc(7px + env(safe-area-inset-bottom));
+    box-sizing:border-box;
+    overflow:hidden
+  }
+  .mobile-nav-item{
+    min-width:0;width:100%;padding:0 2px;gap:4px;
+    font-size:clamp(8px,2.5vw,9px);white-space:nowrap
+  }
+  .mobile-nav-item svg{width:19px;height:19px;flex-shrink:0}
+  .mobile-nav-item span{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+  .main-content{padding-bottom:calc(78px + env(safe-area-inset-bottom))}
+}
+@media(max-width:370px){
+  .mobile-signout{padding:0 7px;font-size:10px}
+  .mobile-nav-item{font-size:8px}
+}
