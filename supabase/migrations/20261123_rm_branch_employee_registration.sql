@@ -40,3 +40,22 @@ with check (
     where e.id = employee_rates.employee_id
   )
 );
+
+-- Permite ao responsável consultar somente as taxas dos funcionários da própria filial.
+drop policy if exists "branch recorders read own branch employee rates" on public.employee_rates;
+create policy "branch recorders read own branch employee rates"
+on public.employee_rates
+for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.employees e
+    join public.profiles p
+      on p.company_id = e.company_id
+     and p.branch_id = e.branch_id
+     and p.user_id = auth.uid()
+     and p.role = 'recorder'
+    where e.id = employee_rates.employee_id
+  )
+);
