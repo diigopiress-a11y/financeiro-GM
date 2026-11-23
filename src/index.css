@@ -97,3 +97,44 @@ body{background:#f4f4f4;color:#171717}
 .company-switch select{max-width:150px;border:1px solid #ddd;border-radius:8px;padding:7px;background:#fff}
 .profile{gap:10px}
 .profile .icon-button{margin-left:auto}
+
+
+/* Histórico de fechamentos semanais e pagamentos por funcionário */
+.week-history-list{display:grid;gap:12px}
+.week-history-card{background:#fff;border:1px solid #e5e5e5;border-radius:13px;overflow:hidden}
+.week-history-header{width:100%;border:0;background:#fff;padding:16px 18px;display:flex;align-items:center;gap:18px;text-align:left;color:#171717}
+.week-history-header:hover{background:#fafafa}
+.week-history-heading{display:grid;gap:5px;flex:1;min-width:0}
+.week-history-heading b{font:700 13px Manrope,sans-serif}
+.week-history-heading small{font-size:10px;color:#888}
+.week-history-summary{display:grid;gap:5px;justify-items:end}
+.week-history-summary strong{font:800 16px Manrope,sans-serif}
+.week-history-status{font-size:10px;font-weight:700;border-radius:20px;padding:5px 9px;background:#eee;color:#333;white-space:nowrap}
+.week-history-status.is-paid{background:#eaf4e5;color:#477534}
+.week-history-status.is-partial{background:#fff3df;color:#956b23}
+.week-history-status.is-pending{background:#f0f0f0;color:#555}
+.week-history-chevron{color:#888;display:grid;place-items:center}
+.week-history-meta{display:flex;gap:17px;flex-wrap:wrap;padding:0 18px 13px;color:#888;font-size:10px}
+.week-history-meta .paid-meta{color:#4d7b38;font-weight:700}
+.week-history-meta .pending-meta{color:#9b6c27;font-weight:700}
+.week-history-details{border-top:1px solid #eee;padding:13px 18px 16px}
+.week-history-detail-head{display:flex;justify-content:space-between;gap:12px;padding:2px 0 10px;color:#888;font-size:10px}
+.week-history-detail-head b{color:#333}
+.week-employee-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid #f0f0f0}
+.week-employee-name{display:grid;gap:4px;flex:1;min-width:0}
+.week-employee-name b{font-size:11px;color:#222}
+.week-employee-name small{font-size:9px;color:#888}
+.week-employee-row>strong{font:700 12px Manrope,sans-serif;white-space:nowrap}
+.week-employee-row .btn-mark-paid,.week-employee-row .btn-paid{min-width:120px}
+.week-all-paid{display:flex;align-items:center;gap:8px;margin-top:12px;padding:11px 12px;background:#f1f7ed;border-radius:9px;color:#4e783b;font-size:11px;font-weight:600}
+@media(max-width:760px){
+ .week-history-header{padding:13px;gap:9px}
+ .week-history-heading b{font-size:11px}
+ .week-history-summary strong{font-size:13px}
+ .week-history-meta{padding:0 13px 12px;gap:11px;font-size:9px}
+ .week-history-details{padding:11px 13px 13px}
+ .week-employee-row{flex-wrap:wrap;gap:8px}
+ .week-employee-name{flex:1 1 calc(60% - 8px)}
+ .week-employee-row>strong{margin-left:auto}
+ .week-employee-row .btn-mark-paid,.week-employee-row .btn-paid{width:100%}
+}
