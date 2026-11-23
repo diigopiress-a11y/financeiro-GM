@@ -72,7 +72,7 @@ export default function App() {
         db.from("attendance").select("id,company_id,branch_id,employee_id,work_date,status").eq("company_id",p.company_id).eq("branch_id",selectedBranch),
         db.from("overtime").select("id,employee_id,work_date,branch_id,company_id").eq("company_id",p.company_id).eq("branch_id",selectedBranch),
         p.role==="admin" ? db.from("payments").select("employee_id,week_start,paid,paid_at").eq("company_id",p.company_id).eq("branch_id",selectedBranch) : Promise.resolve({data:[],error:null} as any),
-        p.role==="admin"&&employeeIds.length ? db.from("employee_rates").select("employee_id,daily_rate").in("employee_id",employeeIds) : Promise.resolve({data:[],error:null} as any),
+        employeeIds.length ? db.from("employee_rates").select("employee_id,daily_rate").in("employee_id",employeeIds) : Promise.resolve({data:[],error:null} as any),
         p.role==="admin" ? db.from("attendance_rates").select("attendance_id,daily_rate") : Promise.resolve({data:[],error:null} as any)
       ]);
       for(const r of [attRes,otRes,payRes,rateRes,attRateRes]) if(r.error) throw r.error;
