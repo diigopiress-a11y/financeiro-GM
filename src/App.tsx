@@ -214,8 +214,8 @@ export default function App() {
       ]);
       if(rateRes.error)throw rateRes.error;
       if(attRateRes.error)throw attRateRes.error;
-      const rateMap=new Map((rateRes.data??[]).map((r:any)=>[r.employee_id,Number(r.daily_rate)]));
-      const attendanceRateMap=new Map((attRateRes.data??[]).map((r:any)=>[r.attendance_id,Number(r.daily_rate)]));
+      const rateMap=new Map<string,number>((rateRes.data??[]).map((r:any):[string,number]=>[String(r.employee_id),Number(r.daily_rate)]));
+      const attendanceRateMap=new Map<string,number>((attRateRes.data??[]).map((r:any):[string,number]=>[String(r.attendance_id),Number(r.daily_rate)]));
       const details=(empRes.data??[]).map((employee:any)=>{
         const worked=(attRes.data??[]).filter((a:any)=>a.employee_id===employee.id&&a.status==="worked");
         const absences=(attRes.data??[]).filter((a:any)=>a.employee_id===employee.id&&a.status==="absent").length;
