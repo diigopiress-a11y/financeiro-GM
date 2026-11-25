@@ -222,8 +222,8 @@ export default function App() {
         const dailyRate=Number(rateMap.get(employee.id)??120);
         const total=worked.reduce((sum:number,a:any)=>sum+(attendanceRateMap.get(a.id)??dailyRate),0);
         const payment=(payRes.data??[]).find((p:any)=>p.employee_id===employee.id);
-        return {branch:targetBranches.find(b=>b.id===employee.branch_id)?.name??"Filial",name:employee.name,workedDays:worked.length,absences,overtime:overtimeDays.size>0?"Sim":"Não",overtimeDays:overtimeDays.size,total,paid:!!payment?.paid,status:payment?.paid?"Pago":"Pendente"};
-      }).filter((r:any)=>r.workedDays>0||r.absences>0||r.overtimeDays>0||(payRes.data??[]).some((p:any)=>p.employee_id===(empRes.data??[]).find((e:any)=>e.name===r.name)?.id));
+        return {employeeId:employee.id,branch:targetBranches.find(b=>b.id===employee.branch_id)?.name??"Filial",name:employee.name,workedDays:worked.length,absences,overtime:overtimeDays.size>0?"Sim":"Não",overtimeDays:overtimeDays.size,total,paid:!!payment?.paid,status:payment?.paid?"Pago":"Pendente"};
+      }).filter((r:any)=>r.workedDays>0||r.absences>0||r.overtimeDays>0||(payRes.data??[]).some((p:any)=>p.employee_id===r.employeeId));
       const branchSummary=targetBranches.map(branch=>{
         const rows=details.filter((r:any)=>r.branch===branch.name);
         const total=rows.reduce((sum:number,r:any)=>sum+r.total,0);
@@ -247,7 +247,7 @@ export default function App() {
       ];
       const summarySheet=XLSX.utils.aoa_to_sheet(summaryRows);
       summarySheet["!cols"]=[{wch:25},{wch:16},{wch:12},{wch:15},{wch:20},{wch:18},{wch:20}];
-      for(const cell of ["E7","F7","G7","F9","G9","F10"])if(summarySheet[cell])summarySheet[cell].z='"R$" #,##0.00';
+      for(let row=7;row<7+branchSummary.length;row++)for(const col of ["E","F","G"])if(summarySheet[col+row])summarySheet[col+row].z='"R$" #,##0.00';\n      for(const cell of ["F"+(9+branchSummary.length),"G"+(9+branchSummary.length),"F"+(10+branchSummary.length)])if(summarySheet[cell])summarySheet[cell].z='"R$" #,##0.00';
       XLSX.utils.book_append_sheet(workbook,summarySheet,"Resumo");
       const detailRows=[
         ["Funcionário","Filial","Diárias","Faltas","Hora extra","Dias com hora extra","Total","Pagamento"],
