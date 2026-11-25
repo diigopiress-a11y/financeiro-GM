@@ -203,3 +203,31 @@ body{background:#f4f4f4;color:#171717}
   .mobile-branch-switch{gap:3px;padding:4px 5px;font-size:9px}
   .mobile-branch-switch select{max-width:85px;font-size:10px}
 }
+
+
+/* Cabeçalho mobile: melhor distribuição entre marca, filial e sair */
+@media(max-width:760px){
+  .topbar{
+    min-height:62px;height:auto;padding:9px 12px;gap:7px;
+    display:flex;align-items:center;justify-content:space-between
+  }
+  .mobile-brand{gap:6px;flex:0 0 auto}
+  .mobile-brand .brand-mark{width:29px;height:29px}
+  .mobile-brand strong{font-size:16px}
+  .mobile-branch-switch{
+    flex:1 1 auto;justify-content:center;min-width:0;
+    max-width:145px;margin-left:auto
+  }
+  .mobile-branch-switch select{max-width:90px}
+  .top-actions{flex:0 0 auto;margin-left:0;gap:6px}
+  .top-actions .today-label,.top-actions .top-avatar{display:none}
+  .mobile-signout{min-height:32px;padding:0 8px;font-size:10px}
+}
+@media(max-width:370px){
+  .topbar{padding-left:9px;padding-right:9px;gap:5px}
+  .mobile-brand{gap:5px}
+  .mobile-brand strong{font-size:15px}
+  .mobile-branch-switch{max-width:126px;padding:4px 5px}
+  .mobile-branch-switch select{max-width:78px;font-size:10px}
+  .mobile-signout{padding:0 6px;min-height:30px}
+}
