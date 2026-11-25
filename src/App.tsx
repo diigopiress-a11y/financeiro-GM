@@ -112,7 +112,7 @@ export default function App() {
   const visibleEmployees=employees.filter(e=>e.active||tab==="equipe");
   const weekEnd=shiftDate(weekStart,5);
   const weeklyRows=useMemo(()=>employees.map(employee=>{const rows=attendance.filter(a=>a.employee_id===employee.id&&a.status==="worked"&&a.work_date>=weekStart&&a.work_date<=weekEnd);const abs=attendance.filter(a=>a.employee_id===employee.id&&a.status==="absent"&&a.work_date>=weekStart&&a.work_date<=weekEnd).length;const extra=new Set(overtime.filter(o=>o.employee_id===employee.id&&o.work_date>=weekStart&&o.work_date<=weekEnd).map(o=>o.work_date)).size;const total=rows.reduce((sum:any,a:any)=>sum+(a.dailyRate??employee.dailyRate),0);const paid=payments.some(p=>p.employee_id===employee.id&&p.week_start===weekStart&&p.paid);return{employee,workedDays:rows.length,absences:abs,extraDays:extra,total,paid};}),[employees,attendance,overtime,payments,weekStart,weekEnd]);
-  const dayRows=attendance.filter(a=>a.work_date===selectedDate);
+  const dayRows=attendance.filter(a=>a.work_date===selectedDate&&a.status==="worked");
   const selectedWeekStart=mondayOf(selectedDate);const summary={worked:dayRows.filter(a=>a.status==="worked").length,absent:dayRows.filter(a=>a.status==="absent").length,extra:new Set(overtime.filter(o=>o.work_date>=selectedWeekStart&&o.work_date<=shiftDate(selectedWeekStart,6)).map(o=>o.employee_id)).size,amount:dayRows.filter(a=>a.status==="worked").reduce((s,a)=>s+((a as any).dailyRate??employees.find(e=>e.id===a.employee_id)?.dailyRate??0),0)};
   const weekTotal=weeklyRows.reduce((s,r)=>s+r.total,0);
   const weekHistory=useMemo(()=>{
