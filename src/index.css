@@ -231,3 +231,11 @@ body{background:#f4f4f4;color:#171717}
   .mobile-branch-switch select{max-width:78px;font-size:10px}
   .mobile-signout{padding:0 6px;min-height:30px}
 }
+
+
+/* Atalhos clicáveis do painel exclusivo do administrador */
+.admin-stats-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.stat-card-clickable{width:100%;font-family:inherit;text-align:left;color:inherit;cursor:pointer;transition:border-color .15s ease,transform .15s ease,box-shadow .15s ease}
+.stat-card-clickable:hover{border-color:#cbdcc2;box-shadow:0 5px 18px #17271b0d;transform:translateY(-1px)}
+.stat-card-clickable:focus-visible{outline:2px solid #789f60;outline-offset:2px}
+@media(max-width:760px){.admin-stats-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.admin-stats-grid .stat-card{padding:11px 9px}.admin-stats-grid .stat-value{font-size:20px}.admin-stats-grid .stat-detail{font-size:8px}}
