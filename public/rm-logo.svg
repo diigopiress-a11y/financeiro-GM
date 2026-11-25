@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-labelledby="title desc">
+  <title id="title">RM Gestão</title>
+  <desc id="desc">Símbolo RM em verde-lima sobre fundo verde-escuro, com linhas que representam organização e crescimento.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#203d2b"/>
+      <stop offset="1" stop-color="#101d16"/>
+    </linearGradient>
+    <linearGradient id="lime" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#d8ff9b"/>
+      <stop offset="1" stop-color="#a9ed62"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="224" height="224" rx="54" fill="url(#bg)"/>
+  <path d="M48 166V75h37c25 0 39 12 39 34 0 16-8 27-22 32l27 25h-31l-23-22h-1v22H48zm26-45h10c9 0 14-4 14-12s-5-12-14-12H74v24z" fill="url(#lime)"/>
+  <path d="M133 166V75h29l23 39 23-39h20v91h-26v-48l-17 29h-2l-17-29v48h-33z" fill="#f4f8ef"/>
+  <path d="M48 188h144" stroke="#a9ed62" stroke-width="5" stroke-linecap="round" opacity=".8"/>
+</svg>
