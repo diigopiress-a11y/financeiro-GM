@@ -80,3 +80,173 @@ body{background:#f4f4f4;color:#171717}
 .daily-record .person-info{flex:1}
 @media(max-width:760px){.daily-entry{max-width:none}.daily-record{flex-direction:row;align-items:center}.record-actions{flex-shrink:0}.extra-flag{font-size:9px;padding:7px 8px}}
 @media(max-width:370px){.record-actions{gap:2px}.extra-flag{font-size:8px;padding:6px}}
+
+/* Autenticação RM e avisos */
+.login-screen{min-height:100vh;display:grid;place-items:center;padding:24px;background:#f5f5f5}
+.login-card{width:min(100%,430px);background:#fff;border:1px solid #e7e7e7;border-radius:18px;padding:34px;box-shadow:0 18px 55px #0000000b}
+.login-card h1{font:700 27px Manrope,sans-serif;color:#171717;margin:22px 0 8px}
+.login-card>p{font-size:13px;color:#777;margin:0 0 24px;line-height:1.6}
+.login-brand{display:flex;align-items:center;gap:12px;color:#171717}
+.login-brand>div:last-child{display:grid;gap:2px}
+.login-brand small{font-size:10px;color:#888;letter-spacing:1.2px}
+.login-card .modal-form{display:grid;gap:15px}
+.login-card .btn-primary{width:100%;justify-content:center;min-height:46px}
+.error-text{color:#a12626!important;font-size:12px!important;margin:0!important}
+.error-banner{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#fff1f1;border:1px solid #f0caca;color:#8d2424;border-radius:10px;font-size:12px;margin-bottom:18px}
+.error-banner button{margin-left:auto;border:0;background:transparent;color:inherit;cursor:pointer}
+.company-switch select{max-width:150px;border:1px solid #ddd;border-radius:8px;padding:7px;background:#fff}
+.profile{gap:10px}
+.profile .icon-button{margin-left:auto}
+
+
+/* Histórico de fechamentos semanais e pagamentos por funcionário */
+.week-history-list{display:grid;gap:12px}
+.week-history-card{background:#fff;border:1px solid #e5e5e5;border-radius:13px;overflow:hidden}
+.week-history-header{width:100%;border:0;background:#fff;padding:16px 18px;display:flex;align-items:center;gap:18px;text-align:left;color:#171717}
+.week-history-header:hover{background:#fafafa}
+.week-history-heading{display:grid;gap:5px;flex:1;min-width:0}
+.week-history-heading b{font:700 13px Manrope,sans-serif}
+.week-history-heading small{font-size:10px;color:#888}
+.week-history-summary{display:grid;gap:5px;justify-items:end}
+.week-history-summary strong{font:800 16px Manrope,sans-serif}
+.week-history-status{font-size:10px;font-weight:700;border-radius:20px;padding:5px 9px;background:#eee;color:#333;white-space:nowrap}
+.week-history-status.is-paid{background:#eaf4e5;color:#477534}
+.week-history-status.is-partial{background:#fff3df;color:#956b23}
+.week-history-status.is-pending{background:#f0f0f0;color:#555}
+.week-history-chevron{color:#888;display:grid;place-items:center}
+.week-history-meta{display:flex;gap:17px;flex-wrap:wrap;padding:0 18px 13px;color:#888;font-size:10px}
+.week-history-meta .paid-meta{color:#4d7b38;font-weight:700}
+.week-history-meta .pending-meta{color:#9b6c27;font-weight:700}
+.week-history-details{border-top:1px solid #eee;padding:13px 18px 16px}
+.week-history-detail-head{display:flex;justify-content:space-between;gap:12px;padding:2px 0 10px;color:#888;font-size:10px}
+.week-history-detail-head b{color:#333}
+.week-employee-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid #f0f0f0}
+.week-employee-name{display:grid;gap:4px;flex:1;min-width:0}
+.week-employee-name b{font-size:11px;color:#222}
+.week-employee-name small{font-size:9px;color:#888}
+.week-employee-row>strong{font:700 12px Manrope,sans-serif;white-space:nowrap}
+.week-employee-row .btn-mark-paid,.week-employee-row .btn-paid{min-width:120px}
+.week-all-paid{display:flex;align-items:center;gap:8px;margin-top:12px;padding:11px 12px;background:#f1f7ed;border-radius:9px;color:#4e783b;font-size:11px;font-weight:600}
+@media(max-width:760px){
+ .week-history-header{padding:13px;gap:9px}
+ .week-history-heading b{font-size:11px}
+ .week-history-summary strong{font-size:13px}
+ .week-history-meta{padding:0 13px 12px;gap:11px;font-size:9px}
+ .week-history-details{padding:11px 13px 13px}
+ .week-employee-row{flex-wrap:wrap;gap:8px}
+ .week-employee-name{flex:1 1 calc(60% - 8px)}
+ .week-employee-row>strong{margin-left:auto}
+ .week-employee-row .btn-mark-paid,.week-employee-row .btn-paid{width:100%}
+}
+
+
+/* Ajustes mobile: acesso ao logout e navegação inferior responsiva */
+.mobile-signout{display:none}
+@media(max-width:760px){
+  .mobile-signout{
+    display:inline-flex;align-items:center;justify-content:center;gap:5px;
+    border:1px solid #dedede;border-radius:8px;background:#fff;color:#222;
+    min-height:34px;padding:0 9px;font-size:11px;font-weight:700;cursor:pointer;
+    flex-shrink:0
+  }
+  .top-actions{gap:8px}
+  .mobile-nav{
+    grid-template-columns:repeat(5,minmax(0,1fr));
+    height:calc(68px + env(safe-area-inset-bottom));
+    padding:6px 4px calc(7px + env(safe-area-inset-bottom));
+    box-sizing:border-box;
+    overflow:hidden
+  }
+  .mobile-nav-item{
+    min-width:0;width:100%;padding:0 2px;gap:4px;
+    font-size:clamp(8px,2.5vw,9px);white-space:nowrap
+  }
+  .mobile-nav-item svg{width:19px;height:19px;flex-shrink:0}
+  .mobile-nav-item span{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+  .main-content{padding-bottom:calc(78px + env(safe-area-inset-bottom))}
+}
+@media(max-width:370px){
+  .mobile-signout{padding:0 7px;font-size:10px}
+  .mobile-nav-item{font-size:8px}
+}
+
+
+/* Modal do QR Code Pix */
+.modal-backdrop{position:fixed;inset:0;background:#101a16a8;display:grid;place-items:center;padding:18px;z-index:100}
+.pix-modal{position:relative;width:min(100%,390px);background:#fff;border-radius:18px;padding:26px 22px;display:flex;flex-direction:column;align-items:center;text-align:center;box-shadow:0 20px 70px #0003}
+.pix-modal h2{font:800 21px Manrope,sans-serif;margin:5px 0;color:#18251e}
+.modal-close{position:absolute;right:12px;top:12px}
+.pix-amount{font:800 25px Manrope,sans-serif;color:#24472c;margin:4px 0 12px}
+.pix-qr{padding:10px;border:1px solid #e7ece7;border-radius:12px;background:#fff}
+.pix-modal p{font-size:12px;line-height:1.5;color:#758078;margin:12px 0}
+.pix-key-label{display:block;max-width:100%;overflow-wrap:anywhere;color:#89938c;font-size:10px;margin-top:12px}
+
+
+/* Seletor de filial visível no cabeçalho mobile para o administrador */
+.mobile-branch-switch{display:none}
+@media(max-width:760px){
+  .mobile-branch-switch{
+    display:flex;align-items:center;gap:5px;min-width:0;
+    padding:5px 7px;border:1px solid #dedede;border-radius:9px;
+    background:#fff;color:#555;font-size:10px;font-weight:700;
+    flex-shrink:0
+  }
+  .mobile-branch-switch select{
+    max-width:105px;min-width:0;border:0;outline:0;background:transparent;
+    color:#171717;font-size:11px;font-weight:800;padding:3px 14px 3px 2px
+  }
+  .topbar{gap:8px}
+  .top-actions{margin-left:auto}
+  .breadcrumb{display:none}
+}
+@media(max-width:370px){
+  .mobile-branch-switch{gap:3px;padding:4px 5px;font-size:9px}
+  .mobile-branch-switch select{max-width:85px;font-size:10px}
+}
+
+
+/* Cabeçalho mobile: melhor distribuição entre marca, filial e sair */
+@media(max-width:760px){
+  .topbar{
+    min-height:62px;height:auto;padding:9px 12px;gap:7px;
+    display:flex;align-items:center;justify-content:space-between
+  }
+  .mobile-brand{gap:6px;flex:0 0 auto}
+  .mobile-brand .brand-mark{width:29px;height:29px}
+  .mobile-brand strong{font-size:16px}
+  .mobile-branch-switch{
+    flex:1 1 auto;justify-content:center;min-width:0;
+    max-width:145px;margin-left:auto
+  }
+  .mobile-branch-switch select{max-width:90px}
+  .top-actions{flex:0 0 auto;margin-left:0;gap:6px}
+  .top-actions .today-label,.top-actions .top-avatar{display:none}
+  .mobile-signout{min-height:32px;padding:0 8px;font-size:10px}
+}
+@media(max-width:370px){
+  .topbar{padding-left:9px;padding-right:9px;gap:5px}
+  .mobile-brand{gap:5px}
+  .mobile-brand strong{font-size:15px}
+  .mobile-branch-switch{max-width:126px;padding:4px 5px}
+  .mobile-branch-switch select{max-width:78px;font-size:10px}
+  .mobile-signout{padding:0 6px;min-height:30px}
+}
+
+
+/* Atalhos clicáveis do painel exclusivo do administrador */
+.admin-stats-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.stat-card-clickable{width:100%;font-family:inherit;text-align:left;color:inherit;cursor:pointer;transition:border-color .15s ease,transform .15s ease,box-shadow .15s ease}
+.stat-card-clickable:hover{border-color:#cbdcc2;box-shadow:0 5px 18px #17271b0d;transform:translateY(-1px)}
+.stat-card-clickable:focus-visible{outline:2px solid #789f60;outline-offset:2px}
+@media(max-width:760px){.admin-stats-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.admin-stats-grid .stat-card{padding:11px 9px}.admin-stats-grid .stat-value{font-size:20px}.admin-stats-grid .stat-detail{font-size:8px}}
+
+
+.danger-text { color: #dc2626; }
+.danger-text:disabled { opacity: .5; cursor: not-allowed; }
+
+
+/* Ações de exportação do fechamento semanal */
+.export-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.export-actions .btn-primary,.export-actions .btn-outline{min-height:40px;white-space:nowrap}
+@media(max-width:760px){.export-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}.export-actions button{justify-content:center;padding:10px 8px;font-size:10px}.page-heading{align-items:flex-start;flex-direction:column}.heading-action{width:100%}}
+@media(max-width:390px){.export-actions{grid-template-columns:1fr}}

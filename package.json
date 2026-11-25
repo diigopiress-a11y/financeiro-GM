@@ -1,5 +1,5 @@
 {
-  "name": "diaria-gm",
+  "name": "rm-gestao-diarias",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -14,7 +14,10 @@
     "typescript": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "lucide-react": "^0.468.0"
+    "lucide-react": "^0.468.0",
+    "@supabase/supabase-js": "^2.57.0",
+    "qrcode.react": "^4.2.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/react": "latest",

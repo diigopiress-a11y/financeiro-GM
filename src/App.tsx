@@ -1,229 +1,297 @@
 import * as React from "react";
-import { useEffect, useMemo, useState } from "react";
-import {
-  Activity, ArrowLeft, ArrowRight, CalendarDays, Check,
-  CheckCircle2, ChevronDown, CircleDollarSign, Clock3, Download, LayoutDashboard,
-  Plus, Search, Settings2, Users, Wallet, X, UserRound, CalendarCheck,
-  AlertCircle, MoreHorizontal
-} from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Activity, ArrowLeft, ArrowRight, CalendarDays, Check, CheckCircle2, Clock3, Download, LayoutDashboard, LogOut, Plus, Search, Settings2, Users, Wallet, X, UserRound, CalendarCheck, AlertCircle, LockKeyhole, QrCode, Copy } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
+import * as XLSX from "xlsx";
+import { isSupabaseConfigured, supabase } from "./lib/supabase";
 
-type Employee = { id: string; name: string; role: string; dailyRate: number; hourlyRate: number; active: boolean };
-type Attendance = { employeeId: string; date: string; status: "worked" | "absent" | "off"; dailyRate?: 120 | 150; note?: string };
-type Overtime = { id: string; employeeId: string; date: string; hours: number; note: string };
-type Payment = { employeeId: string; weekStart: string; paid: boolean; paidAt?: string };
+type Profile = { user_id: string; full_name: string; role: "admin" | "recorder"; company_id: string; branch_id: string | null; must_change_password: boolean };
+type Branch = { id: string; name: string };
+type Employee = { id: string; company_id: string; branch_id: string; name: string; active: boolean; effective_from: string; dailyRate: 120 | 150; pix_key?: string | null; pix_key_type?: string | null; pix_city?: string | null };
+type Attendance = { id: string; company_id: string; branch_id: string; employee_id: string; work_date: string; status: "worked" | "absent" | "off" };
+type Overtime = { id: string; employee_id: string; work_date: string; branch_id: string; company_id: string };
+type Payment = { employee_id: string; week_start: string; paid: boolean; paid_at?: string };
+const todayISO = () => { const d = new Date(); return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
+const shiftDate = (date: string, days: number) => { const d = new Date(date+"T12:00:00"); d.setDate(d.getDate()+days); return dateFrom(d); };
+const dateFrom = (d: Date) => new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+const mondayOf = (date: string) => { const d=new Date(date+"T12:00:00"); d.setDate(d.getDate()-((d.getDay()+6)%7)); return dateFrom(d); };
+const money = (n: number) => n.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+const fmtDate = (date: string) => new Date(date+"T12:00:00").toLocaleDateString("pt-BR",{day:"2-digit",month:"short"});
+const pixField=(id:string,value:string)=>id+String(value.length).padStart(2,"0")+value;
+const crc16=(value:string)=>{let crc=0xffff;for(let i=0;i<value.length;i++){crc^=value.charCodeAt(i)<<8;for(let j=0;j<8;j++)crc=(crc&0x8000)?((crc<<1)^0x1021):(crc<<1);crc&=0xffff;}return crc.toString(16).toUpperCase().padStart(4,"0");};
+const normalizeReceiverBranch=(value?:string|null)=>{const normalized=(value??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toUpperCase();return normalized==="RODOTEC"?"Rodotec":"Juína";};
+const buildPixPayload=(key:string,name:string,amount:number,cityValue:string)=>{const merchant=(name.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^A-Za-z0-9 ]/g,"").trim().toUpperCase().slice(0,25)||"RECEBEDOR");const city=(cityValue.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^A-Za-z0-9 ]/g,"").trim().toUpperCase().slice(0,15)||"JUINA");const gui=pixField("00","br.gov.bcb.pix")+pixField("01",key.trim());const account=pixField("26",gui);const base="000201"+pixField("01","12")+account+"52040000"+"5303986"+pixField("54",amount.toFixed(2))+"5802BR"+pixField("59",merchant)+pixField("60",city)+"62070503***"+"6304";return base+crc16(base);};
+const db = supabase!;
+const usernameEmail: Record<string,string> = { marcos:"admin@rm.com.br", juina:"juina@rm.com.br", rodotec:"rodotec@rm.com.br" };
 
-const todayISO = () => {
-  const d = new Date(); const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
-  return local.toISOString().slice(0, 10);
-};
-const shiftDate = (date: string, days: number) => { const d = new Date(date + "T12:00:00"); d.setDate(d.getDate() + days); return dateFrom(d); };
-const dateFrom = (d: Date) => { const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000); return local.toISOString().slice(0, 10); };
-const mondayOf = (date: string) => { const d = new Date(date + "T12:00:00"); const day = (d.getDay() + 6) % 7; d.setDate(d.getDate() - day); return dateFrom(d); };
-const fmtDate = (date: string) => new Date(date + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
-const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-const uid = () => Math.random().toString(36).slice(2, 10);
-const days = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+export default function App() {
+  const [session,setSession]=useState<any>(null);
+  const [profile,setProfile]=useState<Profile|null>(null);
+  const [branches,setBranches]=useState<Branch[]>([]);
+  const [branchId,setBranchId]=useState("");
+  const [employees,setEmployees]=useState<Employee[]>([]);
+  const [attendance,setAttendance]=useState<Attendance[]>([]);
+  const [overtime,setOvertime]=useState<Overtime[]>([]);
+  const [payments,setPayments]=useState<Payment[]>([]);
+  const [tab,setTab]=useState("inicio");
+  const [selectedDate,setSelectedDate]=useState(todayISO());
+  const [weekStart,setWeekStart]=useState(mondayOf(todayISO()));
+  const [query,setQuery]=useState("");
+  const [username,setUsername]=useState("");
+  const [password,setPassword]=useState("");
+  const [newPassword,setNewPassword]=useState("");
+  const [confirmPassword,setConfirmPassword]=useState("");
+  const [loginBusy,setLoginBusy]=useState(false);
+  const [loading,setLoading]=useState(true);
+  const [saving,setSaving]=useState(false);
+  const [error,setError]=useState("");
+  const [toast,setToast]=useState("");
+  const [employeeName,setEmployeeName]=useState("");
+  const [employeeRate,setEmployeeRate]=useState<"120"|"150">("120");
+  const [employeePixKey,setEmployeePixKey]=useState("");
+  const [employeePixType,setEmployeePixType]=useState("aleatoria");
+  const [employeePixCity,setEmployeePixCity]=useState("Juína");
+  const [pixPayment,setPixPayment]=useState<{name:string;key:string;amount:number;city:string}|null>(null);
+  const [editingEmployee,setEditingEmployee]=useState<Employee|null>(null);
+  const [recordEmployee,setRecordEmployee]=useState("");
+  const [expandedWeekStart,setExpandedWeekStart]=useState(mondayOf(todayISO()));
 
-function readStore<T>(key: string, fallback: T): T {
-  try { const raw = localStorage.getItem("diaria-gm-" + key); return raw ? JSON.parse(raw) as T : fallback; } catch { return fallback; }
-}
-function App() {
-  const [employees, setEmployees] = useState<Employee[]>(() => readStore("employees", []));
-  const [attendance, setAttendance] = useState<Attendance[]>(() => readStore("attendance", []));
-  const [overtime, setOvertime] = useState<Overtime[]>(() => readStore("overtime", []));
-  const [payments, setPayments] = useState<Payment[]>(() => readStore("payments", []));
-  const [tab, setTab] = useState("inicio");
-  const [selectedDate, setSelectedDate] = useState(todayISO());
-  const [weekStart, setWeekStart] = useState(mondayOf(todayISO()));
-  const [query, setQuery] = useState("");
-  const [showEmployee, setShowEmployee] = useState(false);
-    const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
-  const [toast, setToast] = useState("");
+  const notify=(s:string)=>{setToast(s);window.setTimeout(()=>setToast(""),2600);};
+  const loadProfile=useCallback(async (userId:string)=>{
+    const {data,error:profileError}=await db.rpc("get_my_security_status");
+    if(profileError) throw profileError;
+    const p=(Array.isArray(data)?data[0]:data) as Profile|undefined;
+    if(!p || p.user_id!==userId) throw new Error("Usuário sem perfil RM. Peça ao administrador técnico para conferir o cadastro.");
+    setProfile(p);
+    const {data:branchData,error:branchError}=await db.from("branches").select("id,name").eq("company_id",p.company_id).order("name");
+    if(branchError) throw branchError;
+    setBranches(branchData??[]);
+    setBranchId(p.role==="admin" ? ((branchData??[]).find((b:Branch)=>b.name==="JUÍNA")?.id??branchData?.[0]?.id??"") : (p.branch_id??""));
+    return p;
+  },[]);
+  const loadData=useCallback(async (p:Profile,selectedBranch:string)=>{
+    if(!selectedBranch) return;
+    setLoading(true);
+    try {
+      const empRes=await db.from("employees").select("id,company_id,branch_id,name,active,effective_from,pix_key,pix_key_type,pix_city").eq("company_id",p.company_id).eq("branch_id",selectedBranch).order("name");
+      if(empRes.error) throw empRes.error;
+      const employeeIds=(empRes.data??[]).map((e:any)=>e.id);
+      const [attRes,otRes,payRes,rateRes,attRateRes]=await Promise.all([
+        db.from("attendance").select("id,company_id,branch_id,employee_id,work_date,status").eq("company_id",p.company_id).eq("branch_id",selectedBranch),
+        db.from("overtime").select("id,employee_id,work_date,branch_id,company_id").eq("company_id",p.company_id).eq("branch_id",selectedBranch),
+        p.role==="admin" ? db.from("payments").select("employee_id,week_start,paid,paid_at").eq("company_id",p.company_id).eq("branch_id",selectedBranch) : Promise.resolve({data:[],error:null} as any),
+        employeeIds.length ? db.from("employee_rates").select("employee_id,daily_rate").in("employee_id",employeeIds) : Promise.resolve({data:[],error:null} as any),
+        p.role==="admin" ? db.from("attendance_rates").select("attendance_id,daily_rate") : Promise.resolve({data:[],error:null} as any)
+      ]);
+      for(const r of [attRes,otRes,payRes,rateRes,attRateRes]) if(r.error) throw r.error;
+      const rates=new Map((rateRes.data??[]).map((r:any)=>[r.employee_id,r.daily_rate]));
+      const attRates=new Map((attRateRes.data??[]).map((r:any)=>[r.attendance_id,r.daily_rate]));
+      setEmployees((empRes.data??[]).map((e:any)=>({...e,dailyRate:(rates.get(e.id)??120) as 120|150})));
+      setAttendance((attRes.data??[]).map((a:any)=>({...a,dailyRate:attRates.get(a.id)})));
+      setOvertime(otRes.data??[]);
+      setPayments(payRes.data??[]);
+    } catch(e:any){setError(e.message??"Não foi possível carregar os dados.");}
+    finally{setLoading(false);}
+  },[]);
+  useEffect(()=>{
+    if(!isSupabaseConfigured || !supabase){setLoading(false);return;}
+    let alive=true;
+    db.auth.getSession().then(async ({data})=>{
+      if(!alive)return;
+      setSession(data.session);
+      if(data.session){try{const p=await loadProfile(data.session.user.id);if(alive)await loadData(p,p.role==="admin"?(branches[0]?.id??""):p.branch_id??"");}catch(e:any){setError(e.message);await db.auth.signOut();}}
+      else setLoading(false);
+    });
+    const {data:{subscription}}=db.auth.onAuthStateChange((_event,s)=>{setSession(s);if(!s){setProfile(null);setEmployees([]);setAttendance([]);setOvertime([]);setPayments([]);setLoading(false);}});
+    return()=>{alive=false;subscription.unsubscribe();};
+  },[]);
+  useEffect(()=>{if(profile&&branchId)void loadData(profile,branchId);},[profile,branchId,loadData]);
 
-  useEffect(() => { localStorage.setItem("diaria-gm-employees", JSON.stringify(employees)); }, [employees]);
-  useEffect(() => { localStorage.setItem("diaria-gm-attendance", JSON.stringify(attendance)); }, [attendance]);
-  useEffect(() => { localStorage.setItem("diaria-gm-overtime", JSON.stringify(overtime)); }, [overtime]);
-  useEffect(() => { localStorage.setItem("diaria-gm-payments", JSON.stringify(payments)); }, [payments]);
-  useEffect(() => {
-    const demoNames = new Set(["Carlos Henrique","Marcos Oliveira","João Pedro","Ana Paula","Pedro Santos","Rafael Lima"]);
-    setEmployees(old => old.filter(e => {
-      const isDemo = demoNames.has(e.name);
-      if (!isDemo) return true;
-      const hasHistory = attendance.some(a => a.employeeId === e.id) || overtime.some(o => o.employeeId === e.id) || payments.some(p => p.employeeId === e.id);
-      return hasHistory;
-    }));
-  }, []);
+  const login=async(e:React.FormEvent)=>{e.preventDefault();setError("");const key=username.trim().toLowerCase();const email=usernameEmail[key];if(!email){setError("Usuário inválido.");return;}setLoginBusy(true);try{const {data,error:authError}=await db.auth.signInWithPassword({email,password});if(authError)throw authError;setSession(data.session);const p=await loadProfile(data.user.id);await loadData(p,p.role==="admin"?(branches[0]?.id??""):p.branch_id??"");setPassword("");}catch(e:any){setError(e.message==="Invalid login credentials"?"Usuário ou senha incorretos.":e.message??"Falha ao entrar.");}finally{setLoginBusy(false);}};
+  const changePassword=async(e:React.FormEvent)=>{e.preventDefault();setError("");if(newPassword.length<8){setError("A nova senha precisa ter pelo menos 8 caracteres.");return;}if(newPassword!==confirmPassword){setError("As senhas não conferem.");return;}setSaving(true);try{const {error:changeError}=await db.auth.updateUser({password:newPassword});if(changeError)throw changeError;const {error:rpcError}=await db.rpc("complete_password_change",{new_password:newPassword});if(rpcError)throw rpcError;setProfile(p=>p?{...p,must_change_password:false}:p);setNewPassword("");setConfirmPassword("");notify("Senha atualizada com sucesso.");}catch(e:any){setError(e.message??"Não foi possível trocar a senha.");}finally{setSaving(false);}};
+  const signOut=async()=>{await db.auth.signOut();setProfile(null);setSession(null);};
+  const currentBranch=branches.find(b=>b.id===branchId);
+  const visibleEmployees=employees.filter(e=>e.active||tab==="equipe");
+  const weekEnd=shiftDate(weekStart,5);
+  const weeklyRows=useMemo(()=>employees.map(employee=>{const rows=attendance.filter(a=>a.employee_id===employee.id&&a.status==="worked"&&a.work_date>=weekStart&&a.work_date<=weekEnd);const abs=attendance.filter(a=>a.employee_id===employee.id&&a.status==="absent"&&a.work_date>=weekStart&&a.work_date<=weekEnd).length;const extra=new Set(overtime.filter(o=>o.employee_id===employee.id&&o.work_date>=weekStart&&o.work_date<=weekEnd).map(o=>o.work_date)).size;const total=rows.reduce((sum:any,a:any)=>sum+(a.dailyRate??employee.dailyRate),0);const paid=payments.some(p=>p.employee_id===employee.id&&p.week_start===weekStart&&p.paid);return{employee,workedDays:rows.length,absences:abs,extraDays:extra,total,paid};}),[employees,attendance,overtime,payments,weekStart,weekEnd]);
+  const dayRows=attendance.filter(a=>a.work_date===selectedDate&&a.status==="worked");
+  const selectedWeekStart=mondayOf(selectedDate);const summary={worked:dayRows.filter(a=>a.status==="worked").length,absent:dayRows.filter(a=>a.status==="absent").length,extra:new Set(overtime.filter(o=>o.work_date>=selectedWeekStart&&o.work_date<=shiftDate(selectedWeekStart,6)).map(o=>o.employee_id)).size,amount:dayRows.filter(a=>a.status==="worked").reduce((s,a)=>s+((a as any).dailyRate??employees.find(e=>e.id===a.employee_id)?.dailyRate??0),0)};
+  const weekTotal=weeklyRows.reduce((s,r)=>s+r.total,0);
+  const weekHistory=useMemo(()=>{
+    const starts=Array.from(new Set([
+      ...attendance.map(a=>mondayOf(a.work_date)),
+      ...payments.map(p=>p.week_start),
+      weekStart
+    ])).sort((a,b)=>b.localeCompare(a));
+    return starts.map(start=>{
+      const end=shiftDate(start,5);
+      const rows=employees.map(employee=>{
+        const worked=attendance.filter(a=>a.employee_id===employee.id&&a.status==="worked"&&a.work_date>=start&&a.work_date<=end);
+        const absences=attendance.filter(a=>a.employee_id===employee.id&&a.status==="absent"&&a.work_date>=start&&a.work_date<=end).length;
+        const extraDays=new Set(overtime.filter(o=>o.employee_id===employee.id&&o.work_date>=start&&o.work_date<=end).map(o=>o.work_date)).size;
+        const total=worked.reduce((sum,a)=>sum+((a as any).dailyRate??employee.dailyRate),0);
+        const payment=payments.find(p=>p.employee_id===employee.id&&p.week_start===start);
+        return {employee,workedDays:worked.length,absences,extraDays,total,paid:!!payment?.paid};
+      }).filter(r=>r.total>0||payments.some(p=>p.employee_id===r.employee.id&&p.week_start===start));
+      const total=rows.reduce((sum,r)=>sum+r.total,0);
+      const paidRows=rows.filter(r=>r.paid);
+      const paidTotal=paidRows.reduce((sum,r)=>sum+r.total,0);
+      const pendingRows=rows.filter(r=>r.total>0&&!r.paid);
+      const status=rows.length>0&&pendingRows.length===0?"Pago":paidRows.length>0?"Pagamento parcial":"Pendente";
+      return {start,end,rows,total,paidTotal,paidCount:paidRows.length,pendingCount:pendingRows.length,status};
+    }).filter(w=>w.rows.length>0||w.start===weekStart);
+  },[employees,attendance,overtime,payments,weekStart]);
+  const paidTotal=weeklyRows.filter(r=>r.paid).reduce((s,r)=>s+r.total,0);
+  const pending=weeklyRows.filter(r=>!r.paid&&r.total>0).length;
 
-  const activeEmployees = employees.filter(e => e.active);
-  const weekDays = Array.from({ length: 7 }, (_, i) => shiftDate(weekStart, i));
-  const weekEnd = weekDays[6];
-  const getStatus = (employeeId: string, date: string) => attendance.find(a => a.employeeId === employeeId && a.date === date)?.status;
-  const setStatus = (employeeId: string, date: string, status: Attendance["status"]) => {
-    setAttendance(old => [...old.filter(a => !(a.employeeId === employeeId && a.date === date)), { employeeId, date, status }]);
+  const ensureWeekday=async(date:string)=>{
+    const dow=new Date(date+"T12:00:00").getDay();
+    if(dow===0||dow===6||date<todayISO())return;
+    const alreadyHasRecords=attendance.some(a=>a.work_date===date);
+    if(alreadyHasRecords)return;
+    // Carry the previous day's team forward so the responsible only removes absentees.
+    let previousDate=shiftDate(date,-1);
+    if(new Date(previousDate+"T12:00:00").getDay()===0)previousDate=shiftDate(previousDate,-2);
+    const previousTeam=attendance.filter(a=>a.work_date===previousDate&&a.status==="worked");
+    if(!previousTeam.length)return;
+    const rows=previousTeam.map(a=>({company_id:a.company_id,branch_id:a.branch_id,employee_id:a.employee_id,work_date:date,status:"worked",created_by:session.user.id}));
+    const {error:e}=await db.from("attendance").upsert(rows,{onConflict:"employee_id,work_date",ignoreDuplicates:true});
+    if(e){setError(e.message);return;}
+    await loadData(profile!,branchId);
   };
-  const summary = useMemo(() => {
-    const todayRecords = attendance.filter(a => a.date === selectedDate);
-    const worked = todayRecords.filter(a => a.status === "worked").length;
-    const absent = todayRecords.filter(a => a.status === "absent").length;
-    const extraPeople = new Set(overtime.filter(o => o.date === selectedDate).map(o => o.employeeId)).size;
-    const dayValue = todayRecords.filter(a => a.status === "worked").reduce((sum, a) => { const person = employees.find(e => e.id === a.employeeId); return sum + (a.dailyRate ?? person?.dailyRate ?? 0); }, 0);
-    return { worked, absent, unmarked: 0, extraPeople, dayValue };
-  }, [attendance, overtime, selectedDate, employees]);
-
-  const weeklyRows = useMemo(() => employees.map(employee => {
-    const workedRecords = attendance.filter(a => a.employeeId === employee.id && a.status === "worked" && a.date >= weekStart && a.date <= weekEnd);
-    const workedDays = workedRecords.length;
-    const absences = attendance.filter(a => a.employeeId === employee.id && a.status === "absent" && a.date >= weekStart && a.date <= weekEnd).length;
-    const extraDays = new Set(overtime.filter(o => o.employeeId === employee.id && o.date >= weekStart && o.date <= weekEnd).map(o => o.date)).size;
-    const total = workedRecords.reduce((sum, a) => sum + (a.dailyRate ?? employee.dailyRate), 0);
-    const paid = payments.some(p => p.employeeId === employee.id && p.weekStart === weekStart && p.paid);
-    return { employee, workedDays, absences, extraDays, total, paid };
-  }), [employees, attendance, overtime, payments, weekStart, weekEnd]);
-  const weekTotal = weeklyRows.reduce((s, r) => s + r.total, 0);
-  const paidTotal = weeklyRows.filter(r => r.paid).reduce((s, r) => s + r.total, 0);
-  const pendingCount = weeklyRows.filter(r => !r.paid && r.total > 0).length;
-
-  const notify = (message: string) => { setToast(message); window.setTimeout(() => setToast(""), 2400); };
-  const togglePaid = (employeeId: string, paid: boolean) => {
-    setPayments(old => [...old.filter(p => !(p.employeeId === employeeId && p.weekStart === weekStart)), { employeeId, weekStart, paid, paidAt: paid ? todayISO() : undefined }]);
-    notify(paid ? "Pagamento marcado como realizado" : "Pagamento voltou para pendente");
+  useEffect(()=>{if(profile&&branchId&&selectedDate>=todayISO())void ensureWeekday(selectedDate);},[selectedDate,profile,branchId,employees.length]);
+  const addEmployee=async()=>{
+    if(!employeeName.trim()||!profile||!branchId)return;if(profile.role==="admin"&&editingEmployee===null&& !branchId)return;
+    setSaving(true);setError("");
+    try{
+      if(editingEmployee){
+        const {error:e}=await db.from("employees").update({name:employeeName.trim(),pix_key:employeePixKey.trim()||null,pix_key_type:employeePixKey.trim()?employeePixType:null,pix_city:employeePixKey.trim()?employeePixCity.trim():null}).eq("id",editingEmployee.id);if(e)throw e;
+        if(profile.role==="admin"){const {error:r}=await db.from("employee_rates").upsert({employee_id:editingEmployee.id,daily_rate:Number(employeeRate),effective_from:todayISO()},{onConflict:"employee_id"});if(r)throw r;}
+      }else{
+        const {data:e,error:insertError}=await db.from("employees").insert({company_id:profile.company_id,branch_id:profile.role==="admin"?branchId:profile.branch_id,name:employeeName.trim(),active:true,effective_from:todayISO(),pix_key:employeePixKey.trim()||null,pix_key_type:employeePixKey.trim()?employeePixType:null,pix_city:employeePixKey.trim()?employeePixCity.trim():null}).select("id").single();if(insertError)throw insertError;
+        const {error:r}=await db.from("employee_rates").insert({employee_id:e.id,daily_rate:Number(employeeRate),effective_from:todayISO()});if(r)throw r;
+      }
+      setEmployeeName("");setEmployeePixKey("");setEmployeePixType("aleatoria");setEmployeePixCity("Juína");setEditingEmployee(null);await loadData(profile,branchId);notify("Funcionário salvo no Supabase.");
+    }catch(e:any){setError(e.message??"Falha ao salvar funcionário.");}finally{setSaving(false);}
   };
-  const exportCSV = () => {
-    const rows = [["Funcionário", "Diárias", "Faltas", "Dias com hora extra", "Total", "Pagamento"],
-      ...weeklyRows.map(r => [r.employee.name, String(r.workedDays), String(r.absences), String(r.extraDays), r.total.toFixed(2).replace(".", ","), r.paid ? "Pago" : "Pendente"])];
-    const csv = "\uFEFF" + rows.map(row => row.map(v => '"' + v.replace(/"/g, '""') + '"').join(";")).join("\n");
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-    const a = document.createElement("a"); a.href = url; a.download = "fechamento-" + weekStart + ".csv"; a.click(); URL.revokeObjectURL(url);
+  const toggleEmployee=async(emp:Employee)=>{if(emp.active&&!window.confirm(`Remover ${emp.name} da equipe? O funcionário ficará inativo, mas o histórico de diárias e pagamentos será preservado.`))return;const {error:e}=await db.from("employees").update({active:!emp.active}).eq("id",emp.id);if(e)setError(e.message);else{await loadData(profile!,branchId);notify(emp.active?"Funcionário removido da equipe. Histórico preservado.":"Funcionário reativado.");}};
+  const deleteEmployee=async(emp:Employee)=>{if(!profile||!window.confirm("EXCLUIR DEFINITIVAMENTE "+emp.name+"?\n\nIsso apagará também todas as diárias, horas extras, pagamentos e valores históricos vinculados a esse funcionário. Esta ação não pode ser desfeita."))return;setSaving(true);setError("");try{const {error:e}=await db.from("employees").delete().eq("id",emp.id);if(e)throw e;if(editingEmployee?.id===emp.id){setEditingEmployee(null);setEmployeeName("");setEmployeePixKey("");}await loadData(profile,branchId);notify("Funcionário e todo o histórico vinculado foram excluídos.");}catch(e:any){setError(e.message??"Não foi possível excluir o funcionário.");}finally{setSaving(false);}};
+  const addDaily=async()=>{
+    if(!recordEmployee||!profile)return;
+    const emp=employees.find(e=>e.id===recordEmployee);if(!emp)return;
+    setSaving(true);setError("");
+    try{
+      const {data:existing,error:lookupError}=await db.from("attendance").select("id").eq("employee_id",emp.id).eq("work_date",selectedDate).maybeSingle();if(lookupError)throw lookupError;
+      let attendanceId=existing?.id;
+      if(attendanceId){const {error:updateError}=await db.from("attendance").update({status:"worked"}).eq("id",attendanceId);if(updateError)throw updateError;}
+      else {const {data:created,error:insertError}=await db.from("attendance").insert({company_id:profile.company_id,branch_id:branchId,employee_id:emp.id,work_date:selectedDate,status:"worked",created_by:session.user.id}).select("id").single();if(insertError)throw insertError;attendanceId=created.id;}
+      if(profile.role==="admin"){const {error:r}=await db.from("attendance_rates").upsert({attendance_id:attendanceId,daily_rate:emp.dailyRate},{onConflict:"attendance_id"});if(r)throw r;}
+      await loadData(profile,branchId);setRecordEmployee("");notify("Diária registrada no Supabase.");
+    }catch(e:any){setError(e.message??"Falha ao registrar diária.");}finally{setSaving(false);}
   };
-  const addEmployee = (data: Omit<Employee, "id" | "active">, id?: string) => {
-    if (id) setEmployees(old => old.map(e => e.id === id ? { ...e, ...data } : e));
-    else setEmployees(old => [...old, { ...data, id: uid(), active: true }]);
-    setShowEmployee(false); setEditingEmployee(null); notify(id ? "Funcionário atualizado" : "Funcionário cadastrado");
-  };
-  const addDailyRecord = (employeeId: string, dailyRate: 120 | 150, date: string, hasOvertime: boolean) => {
-    setAttendance(old => [...old.filter(a => !(a.employeeId === employeeId && a.date === date)), { employeeId, date, status: "worked", dailyRate }]);
-    setOvertime(old => [...old.filter(o => !(o.employeeId === employeeId && o.date === date)), ...(hasOvertime ? [{ id: uid(), employeeId, date, hours: 1, note: "Passou do horário de saída" }] : [])]);
-    notify("Diária registrada");
+  const removeRecord=async(a:Attendance)=>{const {error:e}=await db.from("attendance").delete().eq("id",a.id);if(e)setError(e.message);else await loadData(profile!,branchId);};
+  const togglePaid=async(employeeId:string,start:string,paid:boolean)=>{if(!profile||profile.role!=="admin")return;const emp=employees.find(e=>e.id===employeeId);if(!emp)return;const {error:e}=await db.from("payments").upsert({company_id:profile.company_id,branch_id:branchId,employee_id:employeeId,week_start:start,paid,paid_at:paid?new Date().toISOString():null,updated_by:session.user.id},{onConflict:"employee_id,week_start"});if(e)setError(e.message);else{await loadData(profile,branchId);notify(paid?"Pagamento marcado como pago.":"Pagamento voltou para pendente.");}};
+  const exportExcel=async(scope:"branch"|"all")=>{
+    if(!profile||profile.role!=="admin")return;
+    setSaving(true);setError("");
+    try{
+      const targetBranches=scope==="all"?branches:branches.filter(b=>b.id===branchId);
+      if(!targetBranches.length)throw new Error("Nenhuma filial disponível para exportação.");
+      const branchIds=targetBranches.map(b=>b.id);
+      const end=shiftDate(weekStart,5);
+      const [empRes,attRes,otRes,payRes]=await Promise.all([
+        db.from("employees").select("id,company_id,branch_id,name,active,effective_from").eq("company_id",profile.company_id).in("branch_id",branchIds).order("name"),
+        db.from("attendance").select("id,company_id,branch_id,employee_id,work_date,status").eq("company_id",profile.company_id).in("branch_id",branchIds).gte("work_date",weekStart).lte("work_date",end),
+        db.from("overtime").select("id,employee_id,work_date,branch_id,company_id").eq("company_id",profile.company_id).in("branch_id",branchIds).gte("work_date",weekStart).lte("work_date",end),
+        db.from("payments").select("employee_id,week_start,paid,paid_at,branch_id").eq("company_id",profile.company_id).in("branch_id",branchIds).eq("week_start",weekStart)
+      ]);
+      for(const result of [empRes,attRes,otRes,payRes])if(result.error)throw result.error;
+      const employeeIds=(empRes.data??[]).map((e:any)=>e.id);
+      const attendanceIds=(attRes.data??[]).map((a:any)=>a.id);
+      const [rateRes,attRateRes]=await Promise.all([
+        employeeIds.length?db.from("employee_rates").select("employee_id,daily_rate").in("employee_id",employeeIds):Promise.resolve({data:[],error:null} as any),
+        attendanceIds.length?db.from("attendance_rates").select("attendance_id,daily_rate").in("attendance_id",attendanceIds):Promise.resolve({data:[],error:null} as any)
+      ]);
+      if(rateRes.error)throw rateRes.error;
+      if(attRateRes.error)throw attRateRes.error;
+      const rateMap=new Map<string,number>((rateRes.data??[]).map((r:any):[string,number]=>[String(r.employee_id),Number(r.daily_rate)]));
+      const attendanceRateMap=new Map<string,number>((attRateRes.data??[]).map((r:any):[string,number]=>[String(r.attendance_id),Number(r.daily_rate)]));
+      const details=(empRes.data??[]).map((employee:any)=>{
+        const worked=(attRes.data??[]).filter((a:any)=>a.employee_id===employee.id&&a.status==="worked");
+        const absences=(attRes.data??[]).filter((a:any)=>a.employee_id===employee.id&&a.status==="absent").length;
+        const overtimeDays=new Set((otRes.data??[]).filter((o:any)=>o.employee_id===employee.id).map((o:any)=>o.work_date));
+        const dailyRate=Number(rateMap.get(employee.id)??120);
+        const total=worked.reduce((sum:number,a:any)=>sum+(attendanceRateMap.get(a.id)??dailyRate),0);
+        const payment=(payRes.data??[]).find((p:any)=>p.employee_id===employee.id);
+        return {employeeId:employee.id,branch:targetBranches.find(b=>b.id===employee.branch_id)?.name??"Filial",name:employee.name,workedDays:worked.length,absences,overtime:overtimeDays.size>0?"Sim":"Não",overtimeDays:overtimeDays.size,total,paid:!!payment?.paid,status:payment?.paid?"Pago":"Pendente"};
+      }).filter((r:any)=>r.workedDays>0||r.absences>0||r.overtimeDays>0||(payRes.data??[]).some((p:any)=>p.employee_id===r.employeeId));
+      const branchSummary=targetBranches.map(branch=>{
+        const rows=details.filter((r:any)=>r.branch===branch.name);
+        const total=rows.reduce((sum:number,r:any)=>sum+r.total,0);
+        const paid=rows.filter((r:any)=>r.paid).reduce((sum:number,r:any)=>sum+r.total,0);
+        return {Filial:branch.name,Funcionários:rows.length,Diárias:rows.reduce((s:number,r:any)=>s+r.workedDays,0),"Horas extras":rows.filter((r:any)=>r.overtime==="Sim").length,"Total da semana":total,"Total pago":paid,"Total pendente":total-paid};
+      });
+      const grandTotal=details.reduce((s:number,r:any)=>s+r.total,0);
+      const grandPaid=details.filter((r:any)=>r.paid).reduce((s:number,r:any)=>s+r.total,0);
+      const workbook=XLSX.utils.book_new();
+      const summaryRows=[
+        ["FECHAMENTO SEMANAL — RM"],
+        ["Período",fmtDate(weekStart)+" a "+fmtDate(end)],
+        ["Filiais",targetBranches.map(b=>b.name).join(" + ")],
+        [],
+        ["RESUMO POR FILIAL"],
+        ["Filial","Funcionários","Diárias","Horas extras","Total da semana","Total pago","Total pendente"],
+        ...branchSummary.map((r:any)=>[r.Filial,r.Funcionários,r.Diárias,r["Horas extras"],r["Total da semana"],r["Total pago"],r["Total pendente"]]),
+        [],
+        ["TOTAL GERAL","","","","",grandTotal,grandPaid],
+        ["PENDENTE","","","","",grandTotal-grandPaid]
+      ];
+      const summarySheet=XLSX.utils.aoa_to_sheet(summaryRows);
+      summarySheet["!cols"]=[{wch:25},{wch:16},{wch:12},{wch:15},{wch:20},{wch:18},{wch:20}];
+      for(let row=7;row<7+branchSummary.length;row++)for(const col of ["E","F","G"])if(summarySheet[col+row])summarySheet[col+row].z='"R$" #,##0.00';
+      for(const cell of ["F"+(8+branchSummary.length),"G"+(8+branchSummary.length),"F"+(9+branchSummary.length)])if(summarySheet[cell])summarySheet[cell].z='"R$" #,##0.00';
+      XLSX.utils.book_append_sheet(workbook,summarySheet,"Resumo");
+      const detailRows=[
+        ["Funcionário","Filial","Diárias","Faltas","Hora extra","Dias com hora extra","Total","Pagamento"],
+        ...details.map((r:any)=>[r.name,r.branch,r.workedDays,r.absences,r.overtime,r.overtimeDays,r.total,r.status])
+      ];
+      const detailSheet=XLSX.utils.aoa_to_sheet(detailRows);
+      detailSheet["!cols"]=[{wch:28},{wch:18},{wch:12},{wch:12},{wch:14},{wch:22},{wch:17},{wch:15}];
+      for(let i=2;i<=detailRows.length;i++)if(detailSheet["G"+i])detailSheet["G"+i].z='"R$" #,##0.00';
+      XLSX.utils.book_append_sheet(workbook,detailSheet,"Funcionários");
+      const filename="RM-fechamento-"+weekStart+(scope==="all"?"-duas-filiais":"-"+(targetBranches[0]?.name??"filial").toLowerCase().replace(/[^a-z0-9]+/g,"-"))+".xlsx";
+      XLSX.writeFile(workbook,filename);
+      notify("Planilha Excel gerada com sucesso.");
+    }catch(e:any){setError(e.message??"Não foi possível gerar a planilha Excel.");}
+    finally{setSaving(false);}
   };
 
-  const nav = [
-    { id: "inicio", label: "Início", icon: LayoutDashboard },
-    { id: "diarias", label: "Diárias", icon: CalendarCheck },
-    { id: "equipe", label: "Equipe", icon: Users },
-    { id: "fechamento", label: "Fechamento", icon: Wallet },
-  ];
-  const title = nav.find(n => n.id === tab)?.label ?? "Diária GM";
-
+  if(!isSupabaseConfigured)return <LoginShell><h1>Configuração pendente</h1><p>As variáveis VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY não foram encontradas nesta publicação da Vercel.</p></LoginShell>;
+  if(!session)return <LoginShell><div className="login-brand"><div className="brand-mark">RM</div><div><b>RM</b><small>GESTÃO DE DIÁRIAS</small></div></div><h1>Acesse sua conta</h1><p>Entre com seu usuário e senha.</p><form className="modal-form" onSubmit={login}><label>Usuário<input autoComplete="username" value={username} onChange={e=>setUsername(e.target.value)} placeholder="Digite seu usuário" required/></label><label>Senha<input type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Sua senha" required/></label>{error&&<p className="error-text">{error}</p>}<button className="btn-primary" disabled={loginBusy}>{loginBusy?"Entrando...":"Entrar"}</button></form></LoginShell>;
+  if(profile?.must_change_password)return <LoginShell><div className="login-brand"><LockKeyhole/><b>Troca de senha obrigatória</b></div><h1>Crie sua nova senha</h1><p>Por segurança, altere a senha temporária antes de continuar.</p><form className="modal-form" onSubmit={changePassword}><label>Nova senha<input type="password" minLength={8} value={newPassword} onChange={e=>setNewPassword(e.target.value)} required/></label><label>Confirme a nova senha<input type="password" minLength={8} value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} required/></label>{error&&<p className="error-text">{error}</p>}<button className="btn-primary" disabled={saving}>Salvar nova senha</button></form></LoginShell>;
+  const nav=[{id:"inicio",label:"Início",icon:LayoutDashboard},{id:"diarias",label:"Diárias",icon:CalendarCheck},...(profile?[{id:"equipe",label:"Equipe",icon:Users},{id:"horas-extras",label:"Hora extra",icon:Clock3}]:[]),...(profile?.role==="admin"?[{id:"fechamento",label:"Fechamento",icon:Wallet}]:[])];
+  const title=nav.find(n=>n.id===tab)?.label??"RM";
+  if(loading&&!employees.length)return <LoginShell><p>Carregando dados do RM...</p></LoginShell>;
   return <div className="app-shell">
-    <aside className="sidebar">
-      <div className="brand"><div className="brand-mark">GM</div><div><strong>GM</strong><small>GESTÃO DE EQUIPE</small></div></div>
-      <div className="company-switch"><div className="company-avatar">G</div><div><b>GM</b><small>Gestão de equipe</small></div><ChevronDown size={16}/></div>
-      <nav className="side-nav">{nav.map(item => <button key={item.id} className={tab === item.id ? "nav-item active" : "nav-item"} onClick={() => setTab(item.id)}><item.icon size={19}/>{item.label}</button>)}</nav>
-      <div className="sidebar-bottom"><div className="help-card"><div className="help-icon"><Activity size={18}/></div><b>Controle simples, dia a dia.</b><p>Registre a equipe e feche a semana sem complicação.</p></div><div className="profile"><div className="profile-avatar">GM</div><div><b>Administrador</b><small>Gestor da empresa</small></div><MoreHorizontal size={18}/></div></div>
+    <aside className="sidebar"><div className="brand"><div className="brand-mark">RM</div><div><strong>RM</strong><small>GESTÃO RM</small></div></div>
+      {profile?.role==="admin"?<label className="company-switch"><span>Filial</span><select value={branchId} onChange={e=>setBranchId(e.target.value)}>{branches.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></label>:<div className="company-switch"><b>{currentBranch?.name??"Sua filial"}</b></div>}
+      <nav className="side-nav">{nav.map(item=><button key={item.id} className={tab===item.id?"nav-item active":"nav-item"} onClick={()=>setTab(item.id)}><item.icon size={19}/>{item.label}</button>)}</nav>
+      <div className="sidebar-bottom"><div className="help-card"><Activity size={18}/><b>Controle simples, dia a dia.</b><p>Seus registros ficam salvos na nuvem.</p></div><div className="profile"><div className="profile-avatar">{profile?.full_name?.slice(0,1)??"U"}</div><div><b>{profile?.full_name}</b><small>{profile?.role==="admin"?"Administrador":"Responsável da filial"}</small></div><button className="icon-button" onClick={signOut} title="Sair"><LogOut size={17}/></button></div></div>
     </aside>
-
-    <main className="main-content">
-      <header className="topbar"><div className="mobile-brand"><div className="brand-mark">GM</div><strong>GM</strong></div><div className="breadcrumb">Gestão da equipe <span>/</span> <b>{title}</b></div><div className="top-actions"><span className="today-label"><CalendarDays size={15}/>{new Date().toLocaleDateString("pt-BR",{weekday:"short",day:"2-digit",month:"short"})}</span><div className="top-avatar">GM</div></div></header>
+    <main className="main-content"><header className="topbar"><div className="mobile-brand"><div className="brand-mark">RM</div><strong>RM</strong></div>{profile?.role==="admin"&&<label className="mobile-branch-switch" aria-label="Selecionar filial"><span>Filial</span><select value={branchId} onChange={e=>setBranchId(e.target.value)}>{branches.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></label>}<div className="breadcrumb">Gestão RM <span>/</span> <b>{title}</b></div><div className="top-actions"><span className="today-label"><CalendarDays size={15}/>{new Date().toLocaleDateString("pt-BR",{weekday:"short",day:"2-digit",month:"short"})}</span><button className="mobile-signout" onClick={signOut} title="Sair da conta" aria-label="Sair da conta"><LogOut size={16}/><span>Sair</span></button><div className="top-avatar">{profile?.full_name?.slice(0,1)}</div></div></header>
       <div className="page">
-        {tab === "inicio" && <Dashboard employees={activeEmployees} summary={summary} weekTotal={weekTotal} pendingCount={pendingCount} setTab={setTab} selectedDate={selectedDate} setSelectedDate={setSelectedDate} weeklyRows={weeklyRows}/>}
-        {tab === "diarias" && <DailyPage employees={employees} attendance={attendance} overtime={overtime} selectedDate={selectedDate} setSelectedDate={setSelectedDate} onAdd={addDailyRecord} onDelete={(employeeId: string, date: string) => { setAttendance(old => old.filter(a => !(a.employeeId === employeeId && a.date === date))); setOvertime(old => old.filter(o => !(o.employeeId === employeeId && o.date === date))); notify("Registro do dia removido"); }}/>} 
-        {tab === "equipe" && <TeamPage employees={employees} query={query} setQuery={setQuery} onAdd={() => {setEditingEmployee(null);setShowEmployee(true);}} onEdit={(e: Employee) => {setEditingEmployee(e);setShowEmployee(true);}} onToggle={(id: string) => setEmployees((old: Employee[]) => old.map((e: Employee) => e.id === id ? {...e,active:!e.active}:e))}/>}
-        {tab === "fechamento" && <ClosingPage rows={weeklyRows} weekStart={weekStart} setWeekStart={setWeekStart} weekEnd={weekEnd} total={weekTotal} paidTotal={paidTotal} pendingCount={pendingCount} onTogglePaid={togglePaid} onExport={exportCSV}/>}
-      </div>
-    </main>
-    <nav className="mobile-nav">{nav.map(item => <button key={item.id} className={tab === item.id ? "mobile-nav-item active" : "mobile-nav-item"} onClick={() => setTab(item.id)}><item.icon size={20}/><span>{item.label === "Horas extras" ? "Extras" : item.label}</span></button>)}</nav>
-    {showEmployee && <EmployeeModal employee={editingEmployee} onClose={() => {setShowEmployee(false);setEditingEmployee(null);}} onSave={addEmployee}/>}
-    {toast && <div className="toast"><CheckCircle2 size={17}/>{toast}</div>}
+        {error&&<div className="error-banner"><AlertCircle size={17}/>{error}<button onClick={()=>setError("")}><X size={15}/></button></div>}
+        {tab==="inicio"&&<><PageHeading eyebrow="VISÃO GERAL" title={"Olá, "+profile?.full_name+"!"} description={"Acompanhe a rotina da filial "+(currentBranch?.name??"")+". "} action={<button className="btn-primary" onClick={()=>setTab("diarias")}><Plus size={17}/> Registrar diária</button>}/><div className="date-strip"><CalendarDays size={17}/><span>Resumo de</span><input type="date" value={selectedDate} onChange={e=>setSelectedDate(e.target.value)}/></div>{profile?.role==="admin"&&<div className="stats-grid admin-stats-grid"><StatCard label="Trabalharam" value={summary.worked} detail="Registros do dia" icon={UserRound} onClick={()=>setTab("diarias")}/><StatCard label="Hora extra" value={summary.extra} detail="Pessoas marcadas na semana" icon={Clock3} tone="blue" onClick={()=>setTab("horas-extras")}/><StatCard label="Valor do dia" value={money(summary.amount)} detail="Soma das diárias" icon={Wallet} tone="amber" onClick={()=>setTab("fechamento")}/></div>}</>}
+        {tab==="diarias"&&<><PageHeading eyebrow="LANÇAMENTO" title="Diárias" description="A equipe do último dia útil é mantida como base. Retire da lista quem não trabalhou nesta data."/><div className="toolbar-card"><div className="date-picker-wrap"><CalendarDays size={18}/><label>Data do serviço<input type="date" value={selectedDate} onChange={e=>setSelectedDate(e.target.value)}/></label></div><span className="muted-count">{dayRows.length} registros</span></div><section className="panel daily-entry"><div className="panel-head"><div><h2>Novo lançamento</h2><p>Selecione a pessoa que trabalhou.</p></div></div><div className="modal-form"><label><span>Funcionário</span><select value={recordEmployee} onChange={e=>setRecordEmployee(e.target.value)}><option value="">Selecione</option>{employees.filter(e=>e.active&&e.effective_from<=selectedDate).map(e=><option key={e.id} value={e.id}>{e.name}</option>)}</select></label><button className="btn-primary" onClick={addDaily} disabled={saving||!recordEmployee}><Plus size={16}/> Salvar diária</button></div></section><div className="section-title-row"><div><h2>Registros do dia</h2><p>Quem está nesta lista tem a diária registrada. Remova quem não trabalhou.</p></div></div><div className="attendance-list">{dayRows.map(a=>{const emp=employees.find(e=>e.id===a.employee_id);return <div className="attendance-card daily-record" key={a.id}><div className="person-info"><div className="person-avatar">{emp?.name.slice(0,1)??"?"}</div><div><b>{emp?.name??"Funcionário"}</b><small>{profile?.role==="admin"?money((a as any).dailyRate??emp?.dailyRate??120):"Presença registrada"}</small></div></div><div className="record-actions"><span className="extra-flag">Trabalhou</span><button className="icon-button danger-hover" onClick={()=>removeRecord(a)} aria-label="Excluir registro"><X size={17}/></button></div></div>})}</div></>}
+        {tab==="equipe"&&profile&&<><PageHeading eyebrow="EQUIPE" title="Funcionários" description={profile.role==="admin"?"Cadastre pessoas e defina o valor da diária.":"Cadastre e consulte os funcionários da sua filial."}/><div className="panel daily-entry"><div className="modal-form"><label>Nome completo<input value={employeeName} onChange={e=>setEmployeeName(e.target.value)} placeholder="Nome do funcionário"/></label><label>Chave Pix<input value={employeePixKey} onChange={e=>setEmployeePixKey(e.target.value)} placeholder="CPF, telefone, e-mail ou chave aleatória"/></label><label>Tipo da chave<select value={employeePixType} onChange={e=>setEmployeePixType(e.target.value)}><option value="cpf">CPF</option><option value="cnpj">CNPJ</option><option value="telefone">Telefone</option><option value="email">E-mail</option><option value="aleatoria">Aleatória</option></select></label><label>Filial do recebedor<select value={normalizeReceiverBranch(employeePixCity)} onChange={e=>setEmployeePixCity(e.target.value)}><option value="Rodotec">RODOTEC</option><option value="Juína">JUÍNA</option></select></label>{profile.role==="admin"&&<label>Valor da diária<select value={employeeRate} onChange={e=>setEmployeeRate(e.target.value as "120"|"150")}><option value="120">R$ 120</option><option value="150">R$ 150</option></select></label>}<button className="btn-primary" onClick={addEmployee} disabled={saving||!employeeName.trim()}><Plus size={16}/> {editingEmployee?"Salvar alteração":"Cadastrar funcionário"}</button></div></div><div className="toolbar-card search-toolbar"><div className="search-box"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar funcionário..."/></div><span className="muted-count">{employees.filter(e=>e.active).length} ativos</span></div><div className="team-grid">{employees.filter(e=>e.name.toLowerCase().includes(query.toLowerCase())).map(e=><div className="team-card" key={e.id}><div className="team-card-top"><div className="person-info"><div className="person-avatar">{e.name.slice(0,1)}</div><div><b>{e.name}</b><small>{money(e.dailyRate)} · {currentBranch?.name}</small></div></div>{profile.role==="admin"&&<button className="icon-button" title="Editar funcionário e chave Pix" onClick={()=>{setEditingEmployee(e);setEmployeeName(e.name);setEmployeeRate(String(e.dailyRate) as "120"|"150");setEmployeePixKey(e.pix_key??"");setEmployeePixType(e.pix_key_type??"aleatoria");setEmployeePixCity(normalizeReceiverBranch(e.pix_city));}}><Settings2 size={18}/></button>}</div><div className="team-card-bottom"><span className={e.active?"status-pill success":"status-pill warning"}>{e.active?"Ativo":"Inativo"}</span>{profile.role==="admin"&&<button className="text-link" onClick={()=>toggleEmployee(e)}>{e.active?"Remover da equipe":"Reativar"}</button>}<button className="text-link danger-text" disabled={saving} onClick={()=>deleteEmployee(e)}>Excluir definitivamente</button></div></div>)}</div></>}
+        {tab==="horas-extras"&&profile&&<><PageHeading eyebrow="CONTROLE SEMANAL" title="Hora extra" description="Marque uma única vez os funcionários que fizeram hora extra nesta semana. Você pode adicionar ou retirar nomes até o fechamento."/><div className="toolbar-card"><div className="date-picker-wrap"><CalendarDays size={18}/><label>Semana de referência<input type="date" value={weekStart} onChange={e=>setWeekStart(mondayOf(e.target.value))}/></label></div><span className="muted-count">{fmtDate(weekStart)} – {fmtDate(shiftDate(weekStart,6))}</span></div><section className="panel daily-entry"><div className="panel-head"><div><h2>Funcionários com hora extra</h2><p>Selecione ou desmarque cada funcionário. O registro vale para a semana inteira.</p></div><span className="status-pill success">{overtime.filter(o=>o.work_date===weekStart).length} selecionados</span></div><div className="attendance-list">{employees.filter(e=>e.active).map(emp=>{const marked=overtime.some(o=>o.employee_id===emp.id&&o.work_date===weekStart);return <div className="attendance-card daily-record" key={emp.id}><div className="person-info"><div className="person-avatar">{emp.name.slice(0,1)}</div><div><b>{emp.name}</b><small>{currentBranch?.name??"Filial"}</small></div></div><button className={marked?"btn-paid":"btn-outline"} disabled={saving} onClick={async()=>{if(!profile)return;setSaving(true);setError("");try{if(marked){const {error:e}=await db.from("overtime").delete().eq("employee_id",emp.id).eq("work_date",weekStart);if(e)throw e;}else{const {error:e}=await db.from("overtime").insert({company_id:profile.company_id,branch_id:branchId,employee_id:emp.id,work_date:weekStart,created_by:session.user.id});if(e)throw e;}await loadData(profile,branchId);notify(marked?"Hora extra removida da semana.":"Hora extra registrada para a semana.");}catch(e:any){setError(e.message??"Não foi possível atualizar a hora extra.");}finally{setSaving(false);}}}>{marked?<><CheckCircle2 size={15}/> Marcado · Remover</>:<><Plus size={15}/> Marcar hora extra</>}</button></div>})}{employees.filter(e=>e.active).length===0&&<div className="empty-state"><b>Nenhum funcionário ativo</b><p>Cadastre funcionários na opção Equipe.</p></div>}</div></section></>}
+        {tab==="fechamento"&&profile?.role==="admin"&&<><PageHeading eyebrow="PAGAMENTO SEMANAL" title="Controle de semanas" description="Acompanhe o que já foi pago e o que ainda está pendente." action={<div className="export-actions"><button className="btn-outline" disabled={saving} onClick={()=>void exportExcel("branch")}><Download size={16}/> Excel da filial</button><button className="btn-primary" disabled={saving} onClick={()=>void exportExcel("all")}><Download size={16}/> Excel das duas filiais</button></div>}/><div className="week-history-list">{weekHistory.map(week=>{const expanded=expandedWeekStart===week.start;return <section className="week-history-card" key={week.start}><button className="week-history-header" onClick={()=>setExpandedWeekStart(expanded?"":week.start)}><div className="week-history-heading"><b>{fmtDate(week.start)} – {fmtDate(week.end)}</b><small>Segunda a sábado · {week.rows.length} funcionários</small></div><div className="week-history-summary"><strong>{money(week.total)}</strong><span className={"week-history-status "+(week.status==="Pago"?"is-paid":week.status==="Pagamento parcial"?"is-partial":"is-pending")}>{week.status}</span></div><span className="week-history-chevron">{expanded?<X size={17}/>:<ArrowRight size={17}/>}</span></button><div className="week-history-meta"><span className="paid-meta">{week.paidCount} pagos</span><span className="pending-meta">{week.pendingCount} pendentes</span><span>Pago: {money(week.paidTotal)}</span></div>{expanded&&<div className="week-history-details"><div className="week-history-detail-head"><b>Funcionários da semana</b><span>Valor individual</span></div>{week.rows.map(r=><div className="week-employee-row" key={r.employee.id}><div className="week-employee-name"><b>{r.employee.name}</b><small>{r.workedDays} diárias · {r.absences} faltas · {r.extraDays} dias com hora extra</small></div><strong>{money(r.total)}</strong>{r.employee.pix_key&&r.total>0&&<button className="btn-outline small" onClick={()=>setPixPayment({name:r.employee.name,key:r.employee.pix_key!,amount:r.total,city:r.employee.pix_city??"Juína"})}><QrCode size={15}/> Pix</button>}<button className={r.paid?"btn-paid":"btn-mark-paid"} disabled={r.total===0} onClick={()=>togglePaid(r.employee.id,week.start,!r.paid)}>{r.paid?<><CheckCircle2 size={15}/> Pago</>:<><Check size={15}/> Marcar como pago</>}</button></div>)}{week.pendingCount===0&&week.rows.length>0&&<div className="week-all-paid"><CheckCircle2 size={17}/> Todos os funcionários desta semana estão pagos.</div>}</div>}</section>})}{weekHistory.length===0&&<div className="empty-state"><div className="empty-icon"><Wallet size={22}/></div><b>Nenhum fechamento encontrado</b><p>As semanas aparecerão aqui conforme os registros de trabalho forem feitos.</p></div>}</div></>}
+      </div></main>
+    {pixPayment&&<div className="modal-backdrop" onClick={()=>setPixPayment(null)}><section className="modal-card pix-modal" onClick={e=>e.stopPropagation()}><button className="icon-button modal-close" onClick={()=>setPixPayment(null)} aria-label="Fechar"><X size={18}/></button><div className="eyebrow">PAGAMENTO VIA PIX</div><h2>{pixPayment.name}</h2><div className="pix-amount">{money(pixPayment.amount)}</div><div className="pix-qr"><QRCodeSVG value={buildPixPayload(pixPayment.key,pixPayment.name,pixPayment.amount,pixPayment.city)} size={220} level="M" includeMargin/></div><p>Escaneie o QR Code no aplicativo do seu banco ou copie o código Pix.</p><button className="btn-primary" onClick={()=>{void navigator.clipboard.writeText(buildPixPayload(pixPayment.key,pixPayment.name,pixPayment.amount,pixPayment.city));notify("Código Pix copiado.");}}><Copy size={16}/> Copiar código Pix</button><small className="pix-key-label">Chave cadastrada: {pixPayment.key}</small></section></div>}
+    <nav className="mobile-nav" style={{gridTemplateColumns:`repeat(${nav.length}, minmax(0, 1fr))`}}>{nav.map(item=><button key={item.id} className={tab===item.id?"mobile-nav-item active":"mobile-nav-item"} onClick={()=>setTab(item.id)}><item.icon size={20}/><span>{item.label}</span></button>)}</nav>
+    {toast&&<div className="toast"><CheckCircle2 size={17}/>{toast}</div>}
   </div>;
 }
-
-function PageHeading({ eyebrow, title, description, action }: { eyebrow: string; title: string; description: string; action?: React.ReactNode }) {
-  return <div className="page-heading"><div><div className="eyebrow">{eyebrow}</div><h1>{title}</h1><p>{description}</p></div>{action && <div className="heading-action">{action}</div>}</div>;
-}
-function StatCard({ label, value, detail, icon: Icon, tone = "green" }: { label: string; value: string | number; detail: string; icon: React.ElementType; tone?: string }) {
-  return <div className="stat-card"><div className={"stat-icon " + tone}><Icon size={19}/></div><div className="stat-label">{label}</div><div className="stat-value">{value}</div><div className="stat-detail">{detail}</div></div>;
-}
-function Dashboard({ employees, summary, weekTotal, pendingCount, setTab, selectedDate, setSelectedDate, weeklyRows }: any) {
-  const dateLabel = new Date(selectedDate + "T12:00:00").toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"long"});
-  return <>
-    <PageHeading eyebrow="VISÃO GERAL" title="Bom dia! 👋" description="Acompanhe a rotina e os números da sua equipe." action={<button className="btn-primary" onClick={() => setTab("diarias")}><Plus size={17}/> Registrar diária</button>}/>
-    <div className="date-strip"><CalendarDays size={17}/><span>Resumo de</span><input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)}/><span className="date-long">{dateLabel}</span></div>
-    <div className="stats-grid">
-      <StatCard label="Trabalharam hoje" value={summary.worked} detail={"de " + employees.length + " funcionários ativos"} icon={UserRound} tone="green"/>
-      <StatCard label="Faltas registradas" value={summary.absent} detail="Ausências neste dia" icon={AlertCircle} tone="red"/>
-      <StatCard label="Com hora extra" value={summary.extraPeople} detail="Passaram do horário de saída" icon={Clock3} tone="blue"/>
-      <StatCard label="Valor lançado hoje" value={money(summary.dayValue)} detail="Soma das diárias" icon={Wallet} tone="amber"/>
-    </div>
-    <div className="dashboard-grid">
-      <section className="panel daily-focus"><div className="panel-head"><div><h2>Resumo da semana</h2><p>Prévia do fechamento semanal</p></div><button className="text-link" onClick={() => setTab("fechamento")}>Ver fechamento <ArrowRight size={15}/></button></div>
-        <div className="weekly-highlight"><div><span>Valor previsto da equipe</span><strong>{money(weekTotal)}</strong></div><div className="highlight-icon"><Wallet size={22}/></div></div>
-        <div className="mini-metrics"><div><b>{weeklyRows.reduce((s: number,r: any)=>s+r.workedDays,0)}</b><span>Diárias registradas</span></div><div><b>{weeklyRows.reduce((s: number,r: any)=>s+r.extraDays,0)}</b><span>Dias com extra</span></div><div><b>{pendingCount}</b><span>Pagamentos pendentes</span></div></div>
-      </section>
-      <section className="panel quick-panel"><div className="panel-head"><div><h2>Acesso rápido</h2><p>O que você precisa fazer?</p></div></div><button className="quick-action" onClick={() => setTab("diarias")}><span className="quick-icon green"><CalendarCheck size={19}/></span><span><b>Conferir diárias do dia</b><small>Marcar presença ou falta</small></span><ArrowRight size={17}/></button><button className="quick-action" onClick={() => setTab("diarias")}><span className="quick-icon blue"><Clock3 size={19}/></span><span><b>Adicionar diária e extra</b><small>Faça os dois lançamentos juntos</small></span><ArrowRight size={17}/></button><button className="quick-action" onClick={() => setTab("equipe")}><span className="quick-icon amber"><Users size={19}/></span><span><b>Administrar equipe</b><small>Adicionar ou editar funcionários</small></span><ArrowRight size={17}/></button></section>
-    </div>
-    <section className="panel attention-panel"><div className="panel-head"><div><h2>Conferência do dia</h2><p>Um resumo rápido para não deixar ninguém sem lançamento.</p></div><button className="btn-outline small" onClick={() => setTab("diarias")}>Abrir diárias</button></div><div className="attention-row"><div className="attention-symbol"><AlertCircle size={18}/></div><div><b>{summary.worked} pessoas lançadas neste dia</b><small>O sistema considera somente quem você adicionou à diária da data selecionada.</small></div><span className="status-pill success">Atualizado</span></div></section>
-  </>;
-}
-
-function DailyPage({ employees, attendance, overtime, selectedDate, setSelectedDate, onAdd, onDelete }: any) {
-  const [employeeId,setEmployeeId]=useState("");
-  const [dailyRate,setDailyRate]=useState<"120"|"150">("120");
-  const [hasOvertime,setHasOvertime]=useState(false);
-  const activeEmployees=employees.filter((e:Employee)=>e.active);
-  const dayRows=attendance.filter((a:Attendance)=>a.date===selectedDate&&a.status==="worked");
-  const extraCount=new Set(overtime.filter((o:Overtime)=>o.date===selectedDate).map((o:Overtime)=>o.employeeId)).size;
-  const getPerson=(id:string)=>employees.find((e:Employee)=>e.id===id);
-  const submit=(e:React.FormEvent)=>{e.preventDefault();if(!employeeId)return;onAdd(employeeId,Number(dailyRate) as 120|150,selectedDate,hasOvertime);setEmployeeId("");setDailyRate("120");setHasOvertime(false);};
-  return <>
-    <PageHeading eyebrow="LANÇAMENTO" title="Diárias" description="Selecione a pessoa, escolha o valor e marque se passou do horário."/>
-    <div className="toolbar-card"><div className="date-picker-wrap"><CalendarDays size={18}/><label>Data do serviço<input type="date" value={selectedDate} onChange={(e:React.ChangeEvent<HTMLInputElement>)=>setSelectedDate(e.target.value)}/></label></div><div className="toolbar-counts"><span className="count-green">{dayRows.length} lançadas</span><span>{extraCount} com hora extra</span></div></div>
-    <section className="panel daily-entry"><div className="panel-head"><div><h2>Novo lançamento</h2><p>Um registro por pessoa em cada dia.</p></div></div>
-      {activeEmployees.length===0?<div className="empty-inline"><Users size={19}/><span>Cadastre os funcionários na aba Equipe para começar.</span></div>:
-      <form className="modal-form" onSubmit={submit}>
-        <label><span>Funcionário</span><select required value={employeeId} onChange={e=>setEmployeeId(e.target.value)}><option value="">Selecione uma pessoa</option>{activeEmployees.map((e:Employee)=><option key={e.id} value={e.id}>{e.name}</option>)}</select></label>
-        <div className="rate-options" role="group" aria-label="Valor da diária">
-          <button type="button" className={dailyRate==="120"?"rate-option selected":"rate-option"} onClick={()=>setDailyRate("120")}><small>Diária</small><b>R$ 120</b></button>
-          <button type="button" className={dailyRate==="150"?"rate-option selected":"rate-option"} onClick={()=>setDailyRate("150")}><small>Cargueiro</small><b>R$ 150</b></button>
-        </div>
-        <label className="overtime-toggle"><input type="checkbox" checked={hasOvertime} onChange={e=>setHasOvertime(e.target.checked)}/><span><b>Fez hora extra</b><small>Passou do horário de saída</small></span></label>
-        <div className="modal-actions"><button className="btn-primary" type="submit"><Plus size={16}/> Salvar diária</button></div>
-      </form>}
-    </section>
-    <div className="section-title-row"><div><h2>Lançamentos do dia</h2><p>Diárias e ocorrências de hora extra.</p></div><span className="muted-count">{dayRows.length} pessoas</span></div>
-    {dayRows.length===0?<div className="empty-state"><div className="empty-icon"><Users size={25}/></div><b>Nenhum lançamento nesta data</b><p>Adicione as pessoas que trabalharam.</p></div>:
-    <div className="attendance-list">{dayRows.map((a:Attendance)=>{const person=getPerson(a.employeeId);const rate=a.dailyRate??person?.dailyRate??120;const extra=overtime.some((o:Overtime)=>o.employeeId===a.employeeId&&o.date===selectedDate);return <div className="attendance-card daily-record" key={a.employeeId}><div className="person-info"><div className="person-avatar">{(person?.name??"?").split(" ").map((n:string)=>n[0]).slice(0,2).join("").toUpperCase()}</div><div><b>{person?.name??"Funcionário não encontrado"}</b><small>{money(rate)}</small></div></div><div className="record-actions"><span className={extra?"extra-flag active":"extra-flag"}>{extra?"Com hora extra":"Sem hora extra"}</span><button className="icon-button danger-hover" aria-label="Remover lançamento do dia" onClick={()=>onDelete(a.employeeId,selectedDate)}><X size={17}/></button></div></div>})}</div>}
-  </>;
-}
-
-
-function TeamPage({ employees, query, setQuery, onAdd, onEdit, onToggle }: any) {
-  const filtered = employees.filter((e:Employee)=>e.name.toLowerCase().includes(query.toLowerCase()));
-  return <>
-    <PageHeading eyebrow="EQUIPE" title="Funcionários" description="Cadastre e gerencie quem pode receber lançamentos." action={<button className="btn-primary" onClick={onAdd}><Plus size={17}/> Adicionar pessoa</button>}/>
-    <div className="toolbar-card search-toolbar"><div className="search-box"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar funcionário..."/></div><span className="muted-count">{employees.filter((e:Employee)=>e.active).length} ativos</span></div>
-    <div className="team-grid">{filtered.map((e:Employee)=><div className="team-card" key={e.id}><div className="team-card-top"><div className="person-info"><div className="person-avatar">{e.name.split(" ").map((n:string)=>n[0]).slice(0,2).join("").toUpperCase()}</div><div><b>{e.name}</b></div></div><button className="icon-button" onClick={()=>onEdit(e)} aria-label="Editar funcionário"><Settings2 size={18}/></button></div><div className="team-card-bottom"><span className={e.active?"status-pill success":"status-pill warning"}>{e.active?"Ativo":"Inativo"}</span><button className="text-link" onClick={()=>onToggle(e.id)}>{e.active?"Remover da equipe":"Adicionar à equipe"}</button></div></div>)}</div>
-    {filtered.length===0&&<div className="empty-state"><b>Nenhum funcionário encontrado</b><p>Tente outro nome ou cadastre uma pessoa.</p></div>}
-  </>;
-}
-
-function ClosingPage({ rows, weekStart, setWeekStart, weekEnd, total, paidTotal, pendingCount, onTogglePaid, onExport }: any) {
-  return <>
-    <PageHeading eyebrow="PAGAMENTO SEMANAL" title="Fechamento da semana" description="Confira os valores das diárias e marque quem já recebeu." action={<button className="btn-outline" onClick={onExport}><Download size={17}/> Exportar CSV</button>}/>
-    <div className="week-selector"><button className="icon-button" onClick={()=>setWeekStart(shiftDate(weekStart,-7))}><ArrowLeft size={18}/></button><div><b>{fmtDate(weekStart)} – {fmtDate(weekEnd)}</b><small>Período de segunda a domingo</small></div><button className="icon-button" onClick={()=>setWeekStart(shiftDate(weekStart,7))}><ArrowRight size={18}/></button><button className="today-button" onClick={()=>setWeekStart(mondayOf(todayISO()))}>Semana atual</button></div>
-    <div className="stats-grid closing-stats"><StatCard label="Total previsto" value={money(total)} detail="Soma das diárias" icon={CircleDollarSign} tone="green"/><StatCard label="Já marcado como pago" value={money(paidTotal)} detail="Pagamentos confirmados" icon={CheckCircle2} tone="blue"/><StatCard label="Pendentes" value={pendingCount} detail="Pessoas aguardando pagamento" icon={AlertCircle} tone="amber"/></div>
-    <div className="section-title-row"><div><h2>Resumo por funcionário</h2><p>O total considera as diárias registradas. Hora extra aparece apenas como informação.</p></div></div>
-    <div className="closing-list">{rows.map((r:any)=><div className="closing-card" key={r.employee.id}><div className="closing-main"><div className="person-avatar">{r.employee.name.split(" ").map((n:string)=>n[0]).slice(0,2).join("").toUpperCase()}</div><div className="closing-name"><b>{r.employee.name}</b><small>{r.workedDays} diárias · {r.absences} faltas · {r.extraDays} dias com extra</small></div><div className="closing-total"><b>{money(r.total)}</b><small>{r.paid?"Pagamento realizado":"Aguardando pagamento"}</small></div></div><div className="closing-bottom"><span className={r.paid?"status-pill success":"status-pill warning"}>{r.paid?"Pago":"Pendente"}</span><button className={r.paid?"btn-paid":"btn-mark-paid"} disabled={r.total===0} onClick={()=>onTogglePaid(r.employee.id,!r.paid)}>{r.paid?<><CheckCircle2 size={15}/> Pago</>:<><Check size={15}/> Marcar como pago</>}</button></div></div>)}</div>
-    <div className="closing-total-bar"><span>Total da semana</span><b>{money(total)}</b></div>
-    <div className="tip-box"><AlertCircle size={17}/><span>Hora extra é apenas um registro de que a pessoa passou do horário de saída. Não altera o valor da diária.</span></div>
-  </>;
-}
-
-function EmployeeModal({ employee, onClose, onSave }: any) {
-  const [name,setName]=useState(employee?.name??"");
-  const submit=(e:React.FormEvent)=>{e.preventDefault();if(!name.trim())return;onSave({name:name.trim(),role:employee?.role??"Funcionário",dailyRate:employee?.dailyRate??120,hourlyRate:employee?.hourlyRate??0},employee?.id);};
-  return <Modal title={employee?"Editar nome":"Adicionar pessoa"} onClose={onClose}><form onSubmit={submit} className="modal-form"><label>Nome completo<input required value={name} onChange={e=>setName(e.target.value)} placeholder="Nome do funcionário"/></label><div className="modal-actions"><button type="button" className="btn-outline" onClick={onClose}>Cancelar</button><button className="btn-primary" type="submit"><Check size={16}/> Salvar</button></div></form></Modal>;
-}
-
-function Modal({ title, children, onClose }: any) { return <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose();}}><div className="modal"><div className="modal-head"><h2>{title}</h2><button className="icon-button" onClick={onClose}><X size={19}/></button></div>{children}</div></div>; }
-
-export default App;
+function LoginShell({children}:any){return <div className="login-screen"><div className="login-card">{children}</div></div>;}
+function PageHeading({eyebrow,title,description,action}:{eyebrow:string;title:string;description:string;action?:React.ReactNode}){return <div className="page-heading"><div><div className="eyebrow">{eyebrow}</div><h1>{title}</h1><p>{description}</p></div>{action&&<div className="heading-action">{action}</div>}</div>;}
+function StatCard({label,value,detail,icon:Icon,tone="green",onClick}:{label:string;value:string|number;detail:string;icon:any;tone?:string;onClick?:()=>void}){return <button type="button" className="stat-card stat-card-clickable" onClick={onClick} aria-label={label+" — abrir seção"}><div className={"stat-icon "+tone}><Icon size={19}/></div><div className="stat-label">{label}</div><div className="stat-value">{value}</div><div className="stat-detail">{detail}</div></button>;}
