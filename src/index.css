@@ -239,3 +239,7 @@ body{background:#f4f4f4;color:#171717}
 .stat-card-clickable:hover{border-color:#cbdcc2;box-shadow:0 5px 18px #17271b0d;transform:translateY(-1px)}
 .stat-card-clickable:focus-visible{outline:2px solid #789f60;outline-offset:2px}
 @media(max-width:760px){.admin-stats-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.admin-stats-grid .stat-card{padding:11px 9px}.admin-stats-grid .stat-value{font-size:20px}.admin-stats-grid .stat-detail{font-size:8px}}
+
+
+.danger-text { color: #dc2626; }
+.danger-text:disabled { opacity: .5; cursor: not-allowed; }
