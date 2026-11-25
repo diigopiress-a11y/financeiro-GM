@@ -243,3 +243,10 @@ body{background:#f4f4f4;color:#171717}
 
 .danger-text { color: #dc2626; }
 .danger-text:disabled { opacity: .5; cursor: not-allowed; }
+
+
+/* Ações de exportação do fechamento semanal */
+.export-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.export-actions .btn-primary,.export-actions .btn-outline{min-height:40px;white-space:nowrap}
+@media(max-width:760px){.export-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}.export-actions button{justify-content:center;padding:10px 8px;font-size:10px}.page-heading{align-items:flex-start;flex-direction:column}.heading-action{width:100%}}
+@media(max-width:390px){.export-actions{grid-template-columns:1fr}}
