@@ -247,7 +247,7 @@ export default function App() {
       ];
       const summarySheet=XLSX.utils.aoa_to_sheet(summaryRows);
       summarySheet["!cols"]=[{wch:25},{wch:16},{wch:12},{wch:15},{wch:20},{wch:18},{wch:20}];
-      for(let row=7;row<7+branchSummary.length;row++)for(const col of ["E","F","G"])if(summarySheet[col+row])summarySheet[col+row].z='"R$" #,##0.00';\n      for(const cell of ["F"+(9+branchSummary.length),"G"+(9+branchSummary.length),"F"+(10+branchSummary.length)])if(summarySheet[cell])summarySheet[cell].z='"R$" #,##0.00';
+      for(let row=7;row<7+branchSummary.length;row++)for(const col of ["E","F","G"])if(summarySheet[col+row])summarySheet[col+row].z='"R$" #,##0.00';\n      for(const cell of ["F"+(8+branchSummary.length),"G"+(8+branchSummary.length),"F"+(9+branchSummary.length)])if(summarySheet[cell])summarySheet[cell].z='"R$" #,##0.00';
       XLSX.utils.book_append_sheet(workbook,summarySheet,"Resumo");
       const detailRows=[
         ["Funcionário","Filial","Diárias","Faltas","Hora extra","Dias com hora extra","Total","Pagamento"],
