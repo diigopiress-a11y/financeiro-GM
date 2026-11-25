@@ -180,3 +180,26 @@ body{background:#f4f4f4;color:#171717}
 .pix-qr{padding:10px;border:1px solid #e7ece7;border-radius:12px;background:#fff}
 .pix-modal p{font-size:12px;line-height:1.5;color:#758078;margin:12px 0}
 .pix-key-label{display:block;max-width:100%;overflow-wrap:anywhere;color:#89938c;font-size:10px;margin-top:12px}
+
+
+/* Seletor de filial visível no cabeçalho mobile para o administrador */
+.mobile-branch-switch{display:none}
+@media(max-width:760px){
+  .mobile-branch-switch{
+    display:flex;align-items:center;gap:5px;min-width:0;
+    padding:5px 7px;border:1px solid #dedede;border-radius:9px;
+    background:#fff;color:#555;font-size:10px;font-weight:700;
+    flex-shrink:0
+  }
+  .mobile-branch-switch select{
+    max-width:105px;min-width:0;border:0;outline:0;background:transparent;
+    color:#171717;font-size:11px;font-weight:800;padding:3px 14px 3px 2px
+  }
+  .topbar{gap:8px}
+  .top-actions{margin-left:auto}
+  .breadcrumb{display:none}
+}
+@media(max-width:370px){
+  .mobile-branch-switch{gap:3px;padding:4px 5px;font-size:9px}
+  .mobile-branch-switch select{max-width:85px;font-size:10px}
+}
