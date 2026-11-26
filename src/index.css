@@ -334,3 +334,45 @@ body{background:#f4f4f4;color:#171717}
 .login-brand-stack .login-wordmark{font-size:68px;line-height:1;letter-spacing:-8px}
 .login-brand-stack small{font-size:10px;letter-spacing:5px;color:#c8c8c8}
 @media(max-width:540px){.login-brand-stack .login-wordmark{font-size:62px}}
+
+
+/* Painel inicial das filiais — simples, operacional e responsivo */
+.branch-home{display:grid;gap:18px;max-width:940px;margin-top:8px}
+.branch-operation{min-height:154px;padding:25px 28px;border-radius:16px;background:linear-gradient(115deg,#111 0%,#202020 65%,#303030 100%);color:#fff;display:flex;align-items:center;justify-content:space-between;overflow:hidden;position:relative;isolation:isolate}
+.branch-operation:after{content:"";position:absolute;z-index:-1;width:230px;height:230px;border:1px solid #ffffff18;border-radius:50%;right:5%;top:-90px;box-shadow:0 0 0 28px #ffffff08,0 0 0 58px #ffffff05}
+.branch-operation-copy>span{font-size:9px;letter-spacing:1.8px;color:#bdbdbd;font-weight:700}
+.branch-operation-copy h2{font:800 27px Manrope,sans-serif;letter-spacing:-.7px;margin:9px 0 5px;color:#fff}
+.branch-operation-copy p{font-size:12px;color:#c4c4c4;margin:0;text-transform:capitalize}
+.branch-operation-copy small{display:inline-flex;margin-top:13px;padding:5px 9px;border:1px solid #ffffff30;border-radius:99px;color:#eee;font-size:9px}
+.branch-operation-icon{width:76px;height:76px;display:grid;place-items:center;border-radius:20px;background:#ffffff0c;border:1px solid #ffffff20;color:#fff;margin-right:22px}
+.branch-home-section{background:#fff;border:1px solid #e9e9e9;border-radius:14px;padding:18px 20px}
+.branch-home-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:13px}
+.branch-home-heading h2{font:700 15px Manrope,sans-serif;margin:0;color:#171717}
+.branch-home-heading>span{font-size:10px;color:#929292}
+.branch-quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.branch-quick-card{min-width:0;border:1px solid #e9e9e9;background:#fff;border-radius:11px;padding:14px;display:flex;align-items:center;gap:11px;text-align:left;color:#777;transition:border-color .18s,transform .18s,background .18s}
+.branch-quick-card:hover{border-color:#bdbdbd;background:#fafafa;transform:translateY(-1px)}
+.branch-quick-icon{width:39px;height:39px;flex-shrink:0;border-radius:10px;background:#f1f1f1;color:#202020;display:grid;place-items:center}
+.branch-quick-copy{flex:1;min-width:0;display:grid;gap:5px}
+.branch-quick-copy b{font-size:11px;color:#222}
+.branch-quick-copy small{font-size:10px;line-height:1.4;color:#929292}
+.branch-quick-card>svg{flex-shrink:0;color:#999}
+.branch-week-panel{padding-bottom:19px}
+.branch-week-days{display:grid;gap:11px}
+.branch-week-day{display:grid;grid-template-columns:34px minmax(50px,1fr) 28px;align-items:center;gap:11px}
+.branch-week-day>span{font-size:9px;letter-spacing:.5px;color:#888;font-weight:700}
+.branch-week-day>b{font-size:10px;text-align:right;color:#333;font-variant-numeric:tabular-nums}
+.branch-week-track{height:7px;border-radius:99px;background:#f0f0f0;overflow:hidden}
+.branch-week-track i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#555,#111);transition:width .35s ease}
+@media(max-width:760px){
+ .branch-home{gap:12px;margin-top:2px}
+ .branch-operation{min-height:137px;padding:20px;border-radius:13px}
+ .branch-operation-copy h2{font-size:24px}
+ .branch-operation-icon{width:57px;height:57px;margin-right:2px;border-radius:15px}
+ .branch-operation-icon svg{width:34px;height:34px}
+ .branch-home-section{padding:15px;border-radius:12px}
+ .branch-quick-grid{grid-template-columns:1fr;gap:8px}
+ .branch-quick-card{padding:12px}
+ .branch-home-heading h2{font-size:14px}
+}
+@media(prefers-reduced-motion:reduce){.branch-quick-card,.branch-week-track i{transition:none}}
