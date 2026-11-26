@@ -256,3 +256,73 @@ body{background:#f4f4f4;color:#171717}
 .brand .rm-logo{width:48px;height:48px}
 .mobile-brand .rm-logo{width:38px;height:38px}
 .login-brand .rm-logo{width:66px;height:66px;border-radius:19px;box-shadow:0 8px 22px #0b1b1126}
+
+
+/* RM Terceirização — login escuro e carregamento animado */
+.login-screen{
+  position:relative;isolation:isolate;min-height:100vh;display:grid;place-items:center;
+  overflow:hidden;padding:32px 18px;color:#f7f7f7;
+  background:radial-gradient(ellipse at 12% 72%,#3a3a3a 0,transparent 29%),
+    radial-gradient(ellipse at 92% 18%,#292929 0,transparent 25%),
+    linear-gradient(135deg,#050505 0%,#111 48%,#030303 100%);
+}
+.login-screen:before,.login-screen:after{content:"";position:absolute;z-index:-1;pointer-events:none;border:1px solid #ffffff12;transform:rotate(-38deg);border-radius:100px}
+.login-screen:before{width:125vw;height:180px;top:7%;left:-35%;background:linear-gradient(90deg,transparent,#ffffff09,transparent)}
+.login-screen:after{width:120vw;height:115px;bottom:5%;right:-48%;background:linear-gradient(90deg,transparent,#ffffff0a,transparent)}
+.login-orbit{position:absolute;z-index:-1;border:1px solid #ffffff12;border-radius:50%;filter:blur(.2px);pointer-events:none}
+.orbit-one{width:360px;height:360px;right:-175px;top:12%;box-shadow:inset 0 0 80px #ffffff08}
+.orbit-two{width:280px;height:280px;left:-165px;bottom:8%;box-shadow:inset 0 0 65px #ffffff0a}
+.login-card{
+  position:relative;width:min(100%,470px);padding:42px 42px 34px;border-radius:28px;
+  border:1px solid #ffffff50;background:linear-gradient(145deg,#ffffff18,#ffffff08 42%,#00000070);
+  box-shadow:0 28px 90px #00000080,inset 0 1px 0 #ffffff35;
+  -webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);
+  animation:rm-card-enter .65s cubic-bezier(.2,.75,.25,1) both;
+}
+.login-brand{display:flex;align-items:center;justify-content:center;gap:15px;color:#fff;margin:0 auto 34px}
+.login-brand>div:last-child{display:grid;gap:5px}
+.login-brand>div:last-child b{font:800 19px Manrope,sans-serif;letter-spacing:2px;color:#fff}
+.login-brand small{font-size:10px;color:#bdbdbd;letter-spacing:5px}
+.login-wordmark{font:800 61px/.9 Manrope,sans-serif;letter-spacing:-7px;color:#fff}
+.login-welcome{text-align:center;margin-bottom:28px}
+.login-card h1{font:700 27px Manrope,sans-serif;letter-spacing:-.8px;color:#fff;margin:0 0 8px}
+.login-card>p,.login-welcome p{font-size:13px;color:#b5b5b5;margin:0;line-height:1.6}
+.login-card .modal-form{display:grid;gap:17px}
+.login-card .modal-form label{display:grid;gap:8px;color:#d0d0d0;font-size:11px;font-weight:600}
+.login-card .modal-form input{width:100%;min-height:49px;padding:13px 15px;border:1px solid #ffffff32;border-radius:13px;background:#ffffff0b;color:#fff;font-size:13px;outline:0;transition:border-color .2s,background .2s,box-shadow .2s}
+.login-card .modal-form input::placeholder{color:#888}
+.login-card .modal-form input:focus{border-color:#ffffffa8;background:#ffffff12;box-shadow:0 0 0 3px #ffffff12}
+.login-card .btn-primary{width:100%;min-height:49px;margin-top:4px;justify-content:center;gap:10px;border-radius:999px;background:#f5f5f5;border:1px solid #fff;color:#111;font-size:13px;font-weight:800;transition:transform .2s,box-shadow .2s,background .2s}
+.login-card .btn-primary:hover{background:#fff;transform:translateY(-2px);box-shadow:0 9px 28px #ffffff20}
+.login-card .btn-primary:active{transform:translateY(0)}
+.login-card .error-text{color:#ffb4b4;font-size:12px;margin:0}
+.login-loading-brand{display:grid;justify-items:center;gap:10px;margin-bottom:30px}
+.login-loading-brand .login-wordmark{font-size:54px}
+.login-loading-brand>span{font-size:10px;letter-spacing:5px;color:#aaa}
+.truck-loader{width:100%;display:grid;justify-items:center;gap:12px;margin-top:28px;color:#eee}
+.truck-road{position:relative;width:100%;height:43px;display:flex;align-items:center;overflow:hidden;border-bottom:1px solid #ffffff70}
+.truck-road:after{content:"";position:absolute;left:0;right:0;bottom:-2px;height:1px;background:#ffffff70}
+.truck-road-line{position:absolute;left:0;right:0;bottom:7px;height:1px;background:repeating-linear-gradient(90deg,#ffffff55 0 18px,transparent 18px 36px)}
+.truck-moving{position:absolute;left:4%;bottom:5px;color:#fff;filter:drop-shadow(0 0 7px #ffffff55);animation:rm-truck-drive 3s ease-in-out infinite}
+.truck-progress{height:5px;width:100%;overflow:hidden;border-radius:99px;background:#ffffff20;border:1px solid #ffffff25}
+.truck-progress span{display:block;width:34%;height:100%;border-radius:99px;background:#fff;box-shadow:0 0 12px #ffffff65;animation:rm-progress 2.4s ease-in-out infinite}
+.truck-loader-label{font-size:11px;color:#bdbdbd;letter-spacing:.3px}
+.loading-overlay{position:fixed;z-index:25;inset:0;display:grid;place-items:center;padding:22px;background:#080808a8;backdrop-filter:blur(5px)}
+.loading-overlay .truck-loader{width:min(280px,100%);padding:22px 24px 18px;border:1px solid #ffffff35;border-radius:18px;background:#151515ed;box-shadow:0 18px 55px #0009;margin:0}
+@keyframes rm-card-enter{from{opacity:0;transform:translateY(18px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes rm-truck-drive{0%{transform:translateX(-12px)}45%{transform:translateX(calc(100% - 52px))}55%{transform:translateX(calc(100% - 52px))}100%{transform:translateX(-12px)}}
+@keyframes rm-progress{0%{transform:translateX(-110%)}100%{transform:translateX(310%)}}
+@media(max-width:540px){
+  .login-screen{padding:20px 14px}
+  .login-card{width:100%;max-width:420px;padding:34px 23px 28px;border-radius:23px}
+  .login-brand{margin-bottom:30px}
+  .login-wordmark{font-size:54px}
+  .login-card h1{font-size:24px}
+  .login-welcome{margin-bottom:25px}
+  .login-orbit.orbit-one{right:-245px}
+  .login-orbit.orbit-two{left:-215px}
+}
+@media(prefers-reduced-motion:reduce){
+  .login-card,.truck-moving,.truck-progress span{animation:none!important}
+  .login-card .btn-primary,.login-card .modal-form input{transition:none}
+}
