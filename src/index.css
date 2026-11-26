@@ -376,3 +376,24 @@ body{background:#f4f4f4;color:#171717}
  .branch-home-heading h2{font-size:14px}
 }
 @media(prefers-reduced-motion:reduce){.branch-quick-card,.branch-week-track i{transition:none}}
+
+
+/* Movimento semanal: versão leve e integrada ao painel RM */
+.branch-week-panel{padding:18px 20px 20px;background:#fff;border:1px solid #ededed}
+.branch-week-panel .branch-home-heading{align-items:center;margin-bottom:18px}
+.branch-week-panel .branch-home-heading>div{display:grid;gap:4px}
+.branch-week-subtitle{font-size:10px;color:#999}
+.branch-week-total-inline{font:700 19px Manrope,sans-serif;color:#202020;white-space:nowrap}
+.branch-week-total-inline small{font:500 9px Manrope,sans-serif;color:#999}
+.branch-week-clean-list{display:grid;gap:13px}
+.branch-week-clean-row{display:grid;grid-template-columns:34px minmax(40px,1fr) 25px;align-items:center;gap:12px}
+.branch-week-clean-label{font-size:9px;letter-spacing:.5px;font-weight:700;color:#888}
+.branch-week-clean-row>b{font-size:10px;font-weight:650;text-align:right;color:#333;font-variant-numeric:tabular-nums}
+.branch-week-clean-track{height:5px;background:#f1f1f1;border-radius:99px;overflow:hidden}
+.branch-week-clean-track i{display:block;height:100%;border-radius:99px;background:#303030;transition:width .3s ease}
+@media(max-width:760px){
+ .branch-week-panel{padding:16px}
+ .branch-week-clean-list{gap:12px}
+ .branch-week-clean-row{grid-template-columns:31px minmax(40px,1fr) 22px;gap:9px}
+}
+@media(prefers-reduced-motion:reduce){.branch-week-clean-track i{transition:none}}
