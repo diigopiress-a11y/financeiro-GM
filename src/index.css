@@ -326,3 +326,11 @@ body{background:#f4f4f4;color:#171717}
   .login-card,.truck-moving,.truck-progress span{animation:none!important}
   .login-card .btn-primary,.login-card .modal-form input{transition:none}
 }
+
+
+/* Marca única centralizada no login RM */
+.login-brand-single{display:flex;justify-content:center;align-items:center;text-align:center;margin:0 auto 34px}
+.login-brand-stack{display:grid;justify-items:center;gap:12px}
+.login-brand-stack .login-wordmark{font-size:68px;line-height:1;letter-spacing:-8px}
+.login-brand-stack small{font-size:10px;letter-spacing:5px;color:#c8c8c8}
+@media(max-width:540px){.login-brand-stack .login-wordmark{font-size:62px}}
