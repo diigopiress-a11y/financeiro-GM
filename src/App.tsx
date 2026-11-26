@@ -171,7 +171,7 @@ export default function App() {
         const {data:e,error:insertError}=await db.from("employees").insert({company_id:profile.company_id,branch_id:profile.role==="admin"?branchId:profile.branch_id,name:employeeName.trim(),active:true,effective_from:todayISO(),pix_key:employeePixKey.trim()||null,pix_key_type:employeePixKey.trim()?employeePixType:null,pix_city:employeePixKey.trim()?normalizeReceiverBranch(currentBranch?.name??employeePixCity):null}).select("id").single();if(insertError)throw insertError;
         const {error:r}=await db.from("employee_rates").insert({employee_id:e.id,daily_rate:Number(employeeRate),effective_from:todayISO()});if(r)throw r;
       }
-      setEmployeeName("");setEmployeePixKey("");setEmployeePixType("aleatoria");setEmployeePixCity("Juína");setEditingEmployee(null);await loadData(profile,branchId);notify("Funcionário salvo no Supabase.");
+      setEmployeeName("");setEmployeePixKey("");setEmployeePixType("aleatoria");setEmployeePixCity("Juína");setEditingEmployee(null);await loadData(profile,branchId);notify("Funcionário salvo com sucesso.");
     }catch(e:any){setError(e.message??"Falha ao salvar funcionário.");}finally{setSaving(false);}
   };
   const toggleEmployee=async(emp:Employee)=>{if(emp.active&&!window.confirm(`Remover ${emp.name} da equipe? O funcionário ficará inativo, mas o histórico de diárias e pagamentos será preservado.`))return;const {error:e}=await db.from("employees").update({active:!emp.active}).eq("id",emp.id);if(e)setError(e.message);else{await loadData(profile!,branchId);notify(emp.active?"Funcionário removido da equipe. Histórico preservado.":"Funcionário reativado.");}};
@@ -186,7 +186,7 @@ export default function App() {
       if(attendanceId){const {error:updateError}=await db.from("attendance").update({status:"worked"}).eq("id",attendanceId);if(updateError)throw updateError;}
       else {const {data:created,error:insertError}=await db.from("attendance").insert({company_id:profile.company_id,branch_id:branchId,employee_id:emp.id,work_date:selectedDate,status:"worked",created_by:session.user.id}).select("id").single();if(insertError)throw insertError;attendanceId=created.id;}
       if(profile.role==="admin"){const {error:r}=await db.from("attendance_rates").upsert({attendance_id:attendanceId,daily_rate:emp.dailyRate},{onConflict:"attendance_id"});if(r)throw r;}
-      await loadData(profile,branchId);setRecordEmployee("");notify("Diária registrada no Supabase.");
+      await loadData(profile,branchId);setRecordEmployee("");notify("Diária registrada com sucesso.");
     }catch(e:any){setError(e.message??"Falha ao registrar diária.");}finally{setSaving(false);}
   };
   const removeRecord=async(a:Attendance)=>{const {error:e}=await db.from("attendance").delete().eq("id",a.id);if(e)setError(e.message);else await loadData(profile!,branchId);};
